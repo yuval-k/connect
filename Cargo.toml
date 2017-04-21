@@ -1,0 +1,10 @@
+[package]
+name = "connect"
+version = "0.1.0"
+authors = ["Yuval Kohavi <yuval.kohavi@gmail.com>"]
+
+[dependencies]
+libc = "0.2.0"
+
+num = "0.1"
+palette = "0.2"

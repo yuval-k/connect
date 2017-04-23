@@ -10,3 +10,65 @@
 כשהצבעים נפגשים במרכז המעגל הם זורמים חזרה לעמודים בצבעים המעורבבים ובנוסף יורדות טבעות קונצנטריות בצבעים המעורבבים.                        
 [7:18 PM, 4/14/2017] איתי רונן: יש לך הגדרות לעוד אנימציות? נראה לי שנגדיר כמה אנימציות בסיסיות ואנחנו מסודרים
 
+
+
+Sikum:
+
+BBB will get messages (which needs to be timed out) via WiFI or some other MCI (perhaps via serial or spi?!).
+regardless the other logic that it might need to do is to sync all the nodes via a leg.
+
+
+# Prepare the BBB:
+// disable HDMI:
+// 
+
+Generate pru binaries:
+install node: apt-get install nodejs-legacy
+install cross gcc: gcc-arm-linux-gnueabihf OR gcc-arm-linux-gnueabi
+
+make CROSS_COMPILE=arm-linux-gnueabihf- 
+
+generate library:
+
+(fix make file and add override to CFLAGS)
+make CROSS_COMPILE=arm-linux-gnueabihf- CFLAGS=-fPIC libledscape.a
+
+(fix make file and add override to C_FLAGS)
+make CROSS_COMPILE=arm-linux-gnueabihf- C_FLAGS=-fPIC -C ./am335x/app_loader/interface/
+
+disable hdmi (latest firmware) - uncomment:
+
+##BeagleBone Black: HDMI (Audio/Video) disabled:
+dtb=am335x-boneblack-emmc-overlay.dtb
+
+
+verify:
+sudo cat /sys/devices/platform/bone_capemgr/slots
+
+
+
+# upgrade to latest jessie with latest kernel
+/opt/tools/scripts/upgrade_kernel
+
+# load module
+(see: http://elinux.org/EBC_Exercise_30_PRU_via_remoteproc_and_RPMsg)
+#enable uio in
+cd /opt/source/dtb-4.4-ti
+
+edit:  src/arm/am335x-boneblack-wireless-emmc-overlay.dts
+make sure that /boot/uEnv.txt has dtb set to m335x-boneblack-wireless-emmc-overlay.dtb:
+dtb=am335x-boneblack-wireless-emmc-overlay.dtb
+
+comment out #include "am33xx-pruss-rproc.dtsi"
+uncomment #include "am33xx-pruss-uio.dtsi"
+add blacklist;
+cat /etc/modprobe.d/pruss-blacklist.conf
+
+blacklist pruss
+blacklist pruss_intc
+blacklist pru-rproc
+
+and then make && sudo make install
+
+sudo modprobe uio_pruss
+

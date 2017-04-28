@@ -11,6 +11,7 @@
                         "sourceMap": {
                 "/buildslave/rust-buildbot/slave/stable-dist-rustc-linux/build/src/": "/home/yuval/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/src/"
             },
+            "terminal": "integrated",
             "preLaunchTask": "build",
             "sourceLanguages": ["rust"]
         }

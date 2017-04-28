@@ -3,6 +3,7 @@ all: cross-build build target/layout.json
 .PHONY: cross-build
 cross-build:
 	CARGO_BUILD_RUSTFLAGS="-C link_args=-L$(shell pwd)/lib/arm-linux-gnueabihf" cargo build --target arm-unknown-linux-gnueabihf
+	CARGO_BUILD_RUSTFLAGS="-C link_args=-L$(shell pwd)/lib/arm-linux-gnueabihf" cargo build --release --target arm-unknown-linux-gnueabihf
 
 .PHONY: build
 build:

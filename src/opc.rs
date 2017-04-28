@@ -15,7 +15,9 @@ impl OPCLedArray {
         let mut stream = std::net::TcpStream::connect(address)?;
         let (sender, receiver) = std::sync::mpsc::channel::<OpcMessage>();
         std::thread::spawn(move || for msg in receiver.into_iter() {
-            let msg: Vec<u8> = msg.into();
+            let header = msg.header().to_bytes();
+            stream.write_all(&header);
+            let msg: Vec<u8> = msg.message.into();
             stream.write_all(&msg);
         });
 

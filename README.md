@@ -72,3 +72,65 @@ and then make && sudo make install
 
 sudo modprobe uio_pruss
 
+###########################################################
+
+for 5 seconds
+color clibs to 30% from the pole. 
+brighter color climbs out.
+
+when two people touch a pole:
+
+
+colors contrinue to climb. when they reach to the top after about more 10 seconds
+when they meet, the color is combined the goes down the poles.
+when the color goes down a circle pattern emerges with clear
+
+
+state:
+touched, connected, untoched
+
+if is from {*} -> connected:
+    if both poles are tocued / none:
+        get the touched turn the touched animations 
+    if one of the pole is connected => nothing
+
+if connected(x) -> connected(y) // tri angle use case
+    => nothing
+
+
+each pole has a level, each animation has (undo animation) so it can transition smoothly
+
+undo / regular animations can be immediatly replaced, and can be created from each outher
+
+following transitions allow:
+nothing -> toched
+nothing -> connect
+touched -> connect
+touched -> reversed touch
+reversed touch -> nothing
+connect -> reverse connect -> reverse touch -> nothing
+connect -> explode 
+explode -> reverse explode
+
+for each pole, remove current state, unless it is connected and the connection is still valid.
+loop and assign state.
+
+connected
+ connected1(is other full)
+ connected2(is other full)
+ when both connected are finished
+
+
+
+ riser on (only when chain)
+
+
+ riser off; explosion on;regular touch off; ceiling touch on;
+
+ 5 rise notes;
+
+
+TOUCH ON
+touch off
+ceiling touch on
+

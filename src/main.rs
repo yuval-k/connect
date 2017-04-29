@@ -3,6 +3,10 @@ extern crate num;
 extern crate palette;
 extern crate tk_opc;
 extern crate bit_set;
+extern crate rosc;
+#[macro_use]
+extern crate log;
+
 
 use std::sync::mpsc;
 use std::io::BufRead;
@@ -13,13 +17,12 @@ mod ledscape;
 mod anim;
 mod animations;
 mod opc;
+mod osc;
 
-use anim::Animation;
 use anim::Drawer;
 
 #[derive(Clone,Copy,Debug)]
 enum EventTypes {
-    Touch(usize),
     Connect(usize, usize),
 }
 
@@ -106,7 +109,7 @@ impl StdinEventSource {
             let word2 = words[1];
             let (pole1, pole2) = (word1.parse::<usize>(), word2.parse::<usize>());
 
-            let ourtimeout = std::time::Duration::from_secs(1000);
+//            let ourtimeout = std::time::Duration::from_secs(1000);
             match (stop, pole1, pole2) {
                 (false, Ok(p1), Ok(p2)) => {
                     println!("sending touch event {} {}", p1, p2);
@@ -137,7 +140,7 @@ fn main() {
 
     let mut ledscapecontroller: Box<anim::LedArray> = match std::env::var("OPCSERVER") {
         Ok(val) => Box::new(get_opc_array(&val).expect("can't connect")),
-        Err(e) => Box::new(get_led_array()),
+        Err(_) => Box::new(get_led_array()),
     };
 
     // TODO add OPCCLient
@@ -151,7 +154,7 @@ fn main() {
     std::thread::spawn(move || {
         let tx = newtx;
         loop {
-            tx.send(Events::Draw);
+            tx.send(Events::Draw).expect("drawing event failed to send!");
             std::thread::sleep(fps_duration);
         }
     });
@@ -161,10 +164,10 @@ fn main() {
 
     let newtx = tx.clone();
     std::thread::spawn(move || {
-        let mut tx = newtx;
+        let tx = newtx;
         let mut eventer = eventer;
         loop {
-            tx.send(eventer.get_event());
+            tx.send(eventer.get_event()).expect("failed to send event to logic!");;
         }
     });
 
@@ -223,15 +226,6 @@ impl TouchMap {
         }
     }
 
-    fn normalize(pole1: usize, pole2: usize) -> (usize, usize) {
-        if pole2 < pole1 {
-            (pole2, pole1)
-        } else {
-            (pole1, pole2)
-        }
-
-    }
-
     fn connect(&mut self, pole1: usize, pole2: usize) {
         //     let (pole1, pole2) = Self::normalize(pole1, pole2);
 
@@ -247,20 +241,6 @@ impl TouchMap {
         self.touches[pole2][pole1] = None;
     }
 
-    fn get_touches_for(&self, pole1: usize) -> &[Option<TouchState>; NUM_POLES] {
-        &self.touches[pole1]
-    }
-
-    fn is_idle(&self) -> bool {
-        for tmp in self.touches.iter() {
-            for t in tmp {
-                if t.is_some() {
-                    return false;
-                }
-            }
-        }
-        true
-    }
 }
 
 fn work<F>(mut draw_poles: F,
@@ -276,12 +256,6 @@ fn work<F>(mut draw_poles: F,
     let mut last_anim_time = std::time::Instant::now();
     for event in receiver.into_iter() {
         match event {
-            Events::Start(EventTypes::Touch(pole)) => {
-                touches.connect(pole, pole);
-            }
-            Events::Stop(EventTypes::Touch(pole)) => {
-                touches.disconnect(pole, pole);
-            }
             Events::Start(EventTypes::Connect(pole1, pole2)) => {
                 touches.connect(pole1, pole2);
             }
@@ -355,7 +329,9 @@ fn draw_poles_to_array(c: &mut anim::LedArray, poles: &[Pole]) {
         let mut adaper = PoleLedArrayAdapter::new(c, LEDS_PER_STRING, i);
         pole.draw(&mut adaper);
     }
-    c.show();
+    if let Err(e) = c.show() {
+        error!("Error showing leds {:?} ", e);
+    }
 }
 
 impl anim::Drawer for Pole {
@@ -369,6 +345,7 @@ impl anim::Drawer for Pole {
 
 struct Animator {
     idle_anim: animations::IdleAnim,
+    backgroundsprites: Vec<Box<animations::PoleAnimation>>,
     sprites: Vec<Box<animations::PoleAnimation>>,
 }
 
@@ -377,6 +354,7 @@ impl Animator {
         Animator {
             idle_anim: animations::IdleAnim::new(),
             sprites: vec![],
+            backgroundsprites: vec![],
         }
     }
 
@@ -394,16 +372,23 @@ impl Animator {
                 *pixel = black;
             }
         }
+
         // update sprites
-        for sprite in self.sprites.iter_mut() {
+        for sprite in self.sprites.iter_mut().chain(self.backgroundsprites.iter_mut()) {
             sprite.update(delta);
         }
 
 
-        // because of borrow checked i can't pass self, so pass this temp vector instead.
+        // because of borrow checker i can't pass self, so pass this temp vector instead.
         let mut newsprites: Vec<Box<animations::PoleAnimation>> = vec![];
         self.idle_anim.animate_poles(|sprit| newsprites.push(sprit), poles, delta);
-        self.sprites.extend(newsprites);
+        self.backgroundsprites.extend(newsprites);
+
+        // output background sprites
+        self.backgroundsprites.retain(|ref x| !x.is_done());
+        for sprite in self.backgroundsprites.iter() {
+            sprite.animate_poles(poles);
+        }
 
         // find out all connection.
         // each pole should have an animation assigned to it.
@@ -434,13 +419,13 @@ impl Animator {
 
             let mut new_anim = poles[i].anim;
 
-            if self.transition(i, &old_state, &new_state) {
+            if self.transition(&old_state, &new_state) {
                 // change animation
                 new_anim = match new_state {
                     PoleState::NotTouched => None,
                     PoleState::Touched => Some(PoleAnimations::Touching),
                     // if one of the other poles in the change has level == 1 then exploding
-                    PoleState::ConnectedTo(ref others) => {
+                    PoleState::ConnectedTo(_) => {
                         /* re calc colors */
                         Some(PoleAnimations::Connecting)
                     }
@@ -490,6 +475,7 @@ impl Animator {
 */
 
 
+            let old_level = pole.level;
             match pole.anim {
                 Some(PoleAnimations::Touching) => {
                     animations::touch::TouchAnim::animate_pole(pole, delta);
@@ -507,6 +493,21 @@ impl Animator {
                     //animations::touch::ConnectedAnim::animate_pole(pole, delta);
                 }
             };
+
+            if old_level >= 1. && pole.level < 1. {
+                // TODO: set low touch
+                // stop riser.
+                // this only happens when not touched, so need to high regular touch off.
+
+                
+                
+                // TODO: send midi!
+            } else if old_level < 1. && pole.level >= 1. {
+                // TODO: set high touch / connected
+                // this only happens when touched, so need to send regular touch off first.
+
+                // TODO: send midi!
+            }
 
             if pole.level > 0. {
                 let len = pole.leds.len();
@@ -541,7 +542,7 @@ impl Animator {
     }
 
 
-    fn transition(&self, i: usize, old_state: &PoleState, new_state: &PoleState) -> bool {
+    fn transition(&self, old_state: &PoleState, new_state: &PoleState) -> bool {
 
         match *old_state {
             PoleState::NotTouched => {
@@ -564,19 +565,6 @@ impl Animator {
                         true
                     }
                     PoleState::Touched => false,
-                    PoleState::ConnectedTo(_) => {
-                        /* send midi! */
-                        true
-                    }
-                }
-            }
-            PoleState::NotTouched => {
-                match *new_state {
-                    PoleState::NotTouched => false,
-                    PoleState::Touched => {
-                        /* send midi! */
-                        true
-                    }
                     PoleState::ConnectedTo(_) => {
                         /* send midi! */
                         true

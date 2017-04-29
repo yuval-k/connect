@@ -15,7 +15,9 @@ impl OPCLedArray {
         let mut stream = std::net::TcpStream::connect(address)?;
         let (sender, receiver) = std::sync::mpsc::channel::<OpcMessage>();
         std::thread::spawn(move || for msg in receiver.into_iter() {
+            // TODO: write first to vector and use tcp no delay?!
             let header = msg.header().to_bytes();
+            // TODO implement reconnection logic / change to tokio
             stream.write_all(&header);
             let msg: Vec<u8> = msg.message.into();
             stream.write_all(&msg);

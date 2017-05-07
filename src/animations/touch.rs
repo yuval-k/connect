@@ -10,7 +10,6 @@ pub trait SinglePoleAnimation {
 pub struct TouchAnim;
 
 impl SinglePoleAnimation for TouchAnim {
-
     fn animate_pole(pole: &mut super::super::Pole, delta: std::time::Duration) {
         // five secs to get to 30% hight
         let delta: f32 = 0.3 * super::to_float(delta) / LED_ANIM_DURATION;
@@ -30,7 +29,7 @@ impl SinglePoleAnimation for TouchAnim {
             }
         }
         // TODO: hadle the case when we are close to 0.3
-       
+
     }
 }
 
@@ -38,8 +37,6 @@ impl SinglePoleAnimation for TouchAnim {
 pub struct ReverseTouchAnim;
 
 impl SinglePoleAnimation for ReverseTouchAnim {
-
-
     fn animate_pole(pole: &mut super::super::Pole, delta: std::time::Duration) {
         // five secs to get to 30% hight
         let delta: f32 = 0.3 * super::to_float(delta) / LED_ANIM_DURATION;
@@ -59,15 +56,14 @@ impl SinglePoleAnimation for ReverseTouchAnim {
                 }
             }
         }
-        
+
         // TODO: hadle the case when we are close to 0.3
-       
+
     }
 }
 pub struct ConnectedAnim;
 
 impl SinglePoleAnimation for ConnectedAnim {
-
     fn animate_pole(pole: &mut super::super::Pole, delta: std::time::Duration) {
 
         let delta: f32 = super::to_float(delta) / LED_ANIM_DURATION;
@@ -83,10 +79,8 @@ impl SinglePoleAnimation for ConnectedAnim {
 pub struct ExplodingAnim;
 
 impl SinglePoleAnimation for ExplodingAnim {
-
-
     fn animate_pole(pole: &mut super::super::Pole, delta: std::time::Duration) {
-// TODO: add sprites some how
+        // TODO: add sprites some how
         let delta: f32 = super::to_float(delta) / LED_ANIM_DURATION;
         // remove touch level if ut is there
         pole.level += delta;

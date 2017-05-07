@@ -7,6 +7,8 @@ extern crate rosc;
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate bitflags;
 
 use std::sync::mpsc;
 use std::io::BufRead;
@@ -109,7 +111,7 @@ impl StdinEventSource {
             let word2 = words[1];
             let (pole1, pole2) = (word1.parse::<usize>(), word2.parse::<usize>());
 
-//            let ourtimeout = std::time::Duration::from_secs(1000);
+            //            let ourtimeout = std::time::Duration::from_secs(1000);
             match (stop, pole1, pole2) {
                 (false, Ok(p1), Ok(p2)) => {
                     println!("sending touch event {} {}", p1, p2);
@@ -180,7 +182,7 @@ fn main() {
 }
 
 #[derive(Copy,Clone,Debug)]
-struct TouchState {
+pub struct TouchState {
     first: std::time::Instant,
     last: std::time::Instant,
 }
@@ -197,22 +199,20 @@ impl TouchState {
         self.last = std::time::Instant::now();
     }
 }
-
-struct TouchMap {
-    touches: [[Option<TouchState>; NUM_POLES]; NUM_POLES],
+pub struct TouchMap {
+    pub touches: [[Option<TouchState>; NUM_POLES]; NUM_POLES],
     timeout_period: std::time::Duration,
 }
 
 impl TouchMap {
-    fn new(timeout: std::time::Duration) -> Self {
+    pub fn new(timeout: std::time::Duration) -> Self {
         TouchMap {
             touches: [[None; NUM_POLES]; NUM_POLES],
             timeout_period: timeout,
         }
     }
 
-
-    fn clean_timeout(&mut self) {
+    pub fn clean_timeout(&mut self) {
 
         let now = std::time::Instant::now();
         for tmp in self.touches.iter_mut() {
@@ -226,7 +226,7 @@ impl TouchMap {
         }
     }
 
-    fn connect(&mut self, pole1: usize, pole2: usize) {
+    pub fn connect(&mut self, pole1: usize, pole2: usize) {
         //     let (pole1, pole2) = Self::normalize(pole1, pole2);
 
         let mut newtouch = self.touches[pole1][pole2].unwrap_or(TouchState::new());
@@ -235,12 +235,11 @@ impl TouchMap {
         self.touches[pole2][pole1] = Some(newtouch);
     }
 
-    fn disconnect(&mut self, pole1: usize, pole2: usize) {
+    pub fn disconnect(&mut self, pole1: usize, pole2: usize) {
         // let (pole1, pole2) = Self::normalize(pole1, pole2);
         self.touches[pole1][pole2] = None;
         self.touches[pole2][pole1] = None;
     }
-
 }
 
 fn work<F>(mut draw_poles: F,
@@ -251,7 +250,7 @@ fn work<F>(mut draw_poles: F,
 {
 
     let mut touches = TouchMap::new(timeout);
-    let mut animator = Animator::new();
+    let mut animator = animations::Animator::new(osc::OSCManager::new("localhost:1234"));
 
     let mut last_anim_time = std::time::Instant::now();
     for event in receiver.into_iter() {
@@ -275,7 +274,7 @@ fn work<F>(mut draw_poles: F,
 
 
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,PartialEq)]
 pub enum PoleState {
     NotTouched,
     Touched,
@@ -285,11 +284,8 @@ pub enum PoleState {
 #[derive(Copy, Clone,Debug, PartialEq)]
 pub enum PoleAnimations {
     Touching,
-    ReversedTouching,
     Connecting,
-    ReversedConnecting,
     Exoloding,
-    ReverseExoloding,
 }
 
 
@@ -340,270 +336,6 @@ impl anim::Drawer for Pole {
         for i in 0..array.len() {
             anim::set_color(array, i, self.leds[i]);
         }
-    }
-}
-
-struct Animator {
-    idle_anim: animations::IdleAnim,
-    backgroundsprites: Vec<Box<animations::PoleAnimation>>,
-    sprites: Vec<Box<animations::PoleAnimation>>,
-}
-
-impl Animator {
-    fn new() -> Self {
-        Animator {
-            idle_anim: animations::IdleAnim::new(),
-            sprites: vec![],
-            backgroundsprites: vec![],
-        }
-    }
-
-    fn animate_poles(&mut self,
-                     poles: &mut [Pole],
-                     touches: &TouchMap,
-                     delta: std::time::Duration) {
-        use animations::touch::SinglePoleAnimation;
-
-        let black = palette::Hsl::new(palette::RgbHue::from_radians(0.), 0., 0.);
-
-        // darkness
-        for p in poles.iter_mut() {
-            for pixel in p.leds.iter_mut() {
-                *pixel = black;
-            }
-        }
-
-        // update sprites
-        for sprite in self.sprites.iter_mut().chain(self.backgroundsprites.iter_mut()) {
-            sprite.update(delta);
-        }
-
-
-        // because of borrow checker i can't pass self, so pass this temp vector instead.
-        let mut newsprites: Vec<Box<animations::PoleAnimation>> = vec![];
-        self.idle_anim.animate_poles(|sprit| newsprites.push(sprit), poles, delta);
-        self.backgroundsprites.extend(newsprites);
-
-        // output background sprites
-        self.backgroundsprites.retain(|ref x| !x.is_done());
-        for sprite in self.backgroundsprites.iter() {
-            sprite.animate_poles(poles);
-        }
-
-        // find out all connection.
-        // each pole should have an animation assigned to it.
-        //
-        for (i, row) in touches.touches.iter().enumerate() {
-            let mut current_touches: bit_set::BitSet =
-                row.iter().enumerate().filter_map(|(ind, &e)| e.map(|_| ind)).collect();
-
-            let is_self_touching = current_touches.remove(i);
-
-            // if they are both empty
-            let (old_state, new_state) = {
-
-                let cur_pole = &mut poles[i];
-                let new_state = {
-                    if !is_self_touching && current_touches.is_empty() {
-                        PoleState::NotTouched
-                    } else if is_self_touching && current_touches.is_empty() {
-                        PoleState::Touched
-                    } else {
-                        PoleState::ConnectedTo(current_touches)
-                    }
-                };
-                // TODO check for explosions
-                (std::mem::replace(&mut cur_pole.state, new_state.clone()), new_state)
-            };
-
-
-            let mut new_anim = poles[i].anim;
-
-            if self.transition(&old_state, &new_state) {
-                // change animation
-                new_anim = match new_state {
-                    PoleState::NotTouched => None,
-                    PoleState::Touched => Some(PoleAnimations::Touching),
-                    // if one of the other poles in the change has level == 1 then exploding
-                    PoleState::ConnectedTo(_) => {
-                        /* re calc colors */
-                        Some(PoleAnimations::Connecting)
-                    }
-                };
-            }
-
-
-            if let PoleState::ConnectedTo(ref others) = new_state {
-                let was_exploding = poles[i].anim == Some(PoleAnimations::Exoloding);
-                let is_exploding = others.iter().any(|i| poles[i].level == 1.);
-                if was_exploding != is_exploding {
-                    if is_exploding {
-                        // TODO: send midi signal
-                        new_anim = Some(PoleAnimations::Exoloding);
-                    } else {
-                        // TODO: send midi signal
-                        new_anim = Some(PoleAnimations::Connecting);
-                    }
-                }
-            }
-
-            poles[i].anim = new_anim;
-
-        }
-
-
-        // if out all that is toched is the pole being touched:
-
-        for pole in poles.iter_mut() {
-            //
-
-            // find out what animation we need:
-
-            // with ledscape, anim array  is a big array. each LEDS_PER_STRING are one pole.
-            //          pole.update_animation(delta);
-
-            // todo:: should the level updates happen here?!
-            // self.update_state
-            // self. update_levels.
-            // bubling sprites etc..
-/*
-            match pole.state {
-                PoleState::Untouched => {
-                    
-                }
-            }
-*/
-
-
-            let old_level = pole.level;
-            match pole.anim {
-                Some(PoleAnimations::Touching) => {
-                    animations::touch::TouchAnim::animate_pole(pole, delta);
-                }
-                Some(PoleAnimations::Connecting) => {
-                    animations::touch::ConnectedAnim::animate_pole(pole, delta);
-                }
-                None => {
-                    animations::touch::ReverseTouchAnim::animate_pole(pole, delta);
-                }
-                Some(PoleAnimations::Exoloding) => {
-                    animations::touch::ExplodingAnim::animate_pole(pole, delta);
-                }
-                Some(_) => {
-                    //animations::touch::ConnectedAnim::animate_pole(pole, delta);
-                }
-            };
-
-            if old_level >= 1. && pole.level < 1. {
-                // TODO: set low touch
-                // stop riser.
-                // this only happens when not touched, so need to high regular touch off.
-
-                
-                
-                // TODO: send midi!
-            } else if old_level < 1. && pole.level >= 1. {
-                // TODO: set high touch / connected
-                // this only happens when touched, so need to send regular touch off first.
-
-                // TODO: send midi!
-            }
-
-            if pole.level > 0. {
-                let len = pole.leds.len();
-
-                let circl_index: usize = (pole.level * len as f32) as usize;
-
-                for pixel in pole.leds.iter_mut().rev().take(circl_index) {
-                    *pixel = pole.base_color;
-                }
-            }
-            if pole.touch_level > 0. {
-                let len = pole.leds.len();
-                let circl_index: usize = (pole.touch_level * len as f32) as usize;
-
-                for pixel in pole.leds.iter_mut().take(circl_index) {
-                    *pixel = pole.current_color;
-                }
-            }
-
-
-
-        }
-
-
-        // output sprites
-        self.sprites.retain(|ref x| !x.is_done());
-        for sprite in self.sprites.iter() {
-            sprite.animate_poles(poles);
-        }
-
-
-    }
-
-
-    fn transition(&self, old_state: &PoleState, new_state: &PoleState) -> bool {
-
-        match *old_state {
-            PoleState::NotTouched => {
-                match *new_state {
-                    PoleState::NotTouched => false,
-                    PoleState::Touched => {
-                        /* send midi! */
-                        true
-                    }
-                    PoleState::ConnectedTo(_) => {
-                        /* send midi! */
-                        true
-                    }
-                }
-            }
-            PoleState::Touched => {
-                match *new_state {
-                    PoleState::NotTouched => {
-                        /* send midi! */
-                        true
-                    }
-                    PoleState::Touched => false,
-                    PoleState::ConnectedTo(_) => {
-                        /* send midi! */
-                        true
-                    }
-                }
-            }
-            PoleState::ConnectedTo(ref x) => {
-                match *new_state {
-                    PoleState::NotTouched => {
-                        /* send midi! */
-                        true
-                    }
-                    PoleState::Touched => {
-                        /* send midi! */
-                        true
-                    }
-                    PoleState::ConnectedTo(ref y) => x != y, 
-                    /* send midi if needed! or maybe not! */
-                }
-            }
-        }
-
-
-        /*
-        for new_touch in current_touches.difference(&old_tocuhes) {
-            // TODO: signal new touch
-            // TODO: if old state was nothing, create animation 
-
-        }
-        for removed_touch in old_tocuhes.difference(&current_touches) {
-            // TODO signal removed touch                    
-           for other_ind in v.into_iter() {
-                let other_pole = &mut poles[other_ind]; 
-                if let PoleState::ConnectedTo(ref mut otherv) = other_pole.state {
-                    otherv.remove(i);
-                }
-            }
-        }
-  */
     }
 }
 

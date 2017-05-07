@@ -134,3 +134,6 @@ TOUCH ON
 touch off
 ceiling touch on
 
+
+
+sudo apt-get install libjack-jackd2-dev

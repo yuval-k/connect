@@ -131,11 +131,11 @@ impl OSCManager {
         // 2 poles in a chain.. we can notified twice for each
         let risers = self.risers >> 1;
 
-        self.risers -= 1;
 
         if risers == 0 {
             return None;
         }
+        self.risers -= 1;
         // no more than 5
         if risers > 5 {
             return None;

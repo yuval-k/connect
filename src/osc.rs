@@ -148,7 +148,7 @@ impl OSCManager {
     fn sendmsg(addr: &'static str, mut rx: std::sync::mpsc::Receiver<rosc::OscPacket>) {
         loop {
             println!("trying to connect {}", addr);
-            Self::sconnect(addr, &mut rx);
+            Self::sconnectudp(addr, &mut rx);
             println!("connection lost");
 
         }
@@ -167,7 +167,7 @@ impl OSCManager {
         }
 
         for msg in rx.iter() {
-            let mut data = match rosc::encoder::encode(&msg) {
+            let data = match rosc::encoder::encode(&msg) {
                 Ok(data) => data,
                 Err(_) => return,
             };
@@ -175,6 +175,29 @@ impl OSCManager {
             
             if stream.write_all(&data).is_err() {
             println!("error sending message!");
+                
+                return
+            }
+        }
+    }
+
+    fn sconnectudp(addr: &'static str, rx: &mut std::sync::mpsc::Receiver<rosc::OscPacket>) {
+        let mut socket = match std::net::UdpSocket::bind("0.0.0.0:0") {
+            Ok(stream) => stream,
+            Err(_) => return,
+        };
+
+            println!("udb bound!");
+
+        for msg in rx.iter() {
+            let data = match rosc::encoder::encode(&msg) {
+                Ok(data) => data,
+                Err(_) => return,
+            };
+            println!("udp sending messgae!");
+            
+            if socket.send_to(&data, addr).is_err() {
+            println!("error sending udp message!");
                 
                 return
             }

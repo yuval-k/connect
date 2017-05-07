@@ -173,7 +173,11 @@ impl OSCManager {
             };
             println!("sending messgae!");
             
-            stream.write_all(&data);
+            if stream.write_all(&data).is_err() {
+            println!("error sending message!");
+                
+                return
+            }
         }
     }
 

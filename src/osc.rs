@@ -41,7 +41,7 @@ bitflags! {
 pub struct OSCManager {
     sender: std::sync::mpsc::Sender<rosc::OscPacket>,
     risers : usize,
-    sound_state : SoundState,
+    sound_state : [SoundState; super::NUM_POLES],
 }
 
 
@@ -51,11 +51,11 @@ impl OSCManager {
 
         std::thread::spawn(move || Self::sendmsg(addr, rx));
 
-        OSCManager { sender: tx , risers : 0, sound_state : SoundState::empty()}
+        OSCManager { sender: tx , risers : 0, sound_state : [SoundState::empty() ; super::NUM_POLES]}
     }
 
     pub fn update_sound(&mut self, i : usize, old_state : Option<super::PoleAnimations>, current_state : Option<super::PoleAnimations>) {
-        let current_sound_state = self.sound_state;
+        let current_sound_state = self.sound_state[i];
         let mut desired_state = SoundState::empty();
         // Cancel old state
         match  current_state {
@@ -65,8 +65,8 @@ impl OSCManager {
             Some(super::PoleAnimations::Exoloding) => {desired_state = HighTouch;},
         }
 
-        let to_remove = desired_state - current_sound_state;
-        let to_add =  current_sound_state - desired_state;
+        let to_add = desired_state - current_sound_state;
+        let to_remove =  current_sound_state - desired_state;
         let is_exploding = (old_state !=  Some(super::PoleAnimations::Exoloding)) && (current_state == Some(super::PoleAnimations::Exoloding));
        
         let mut events : Vec<OSCEvent> = vec![];
@@ -98,7 +98,7 @@ impl OSCManager {
             self.add_riser(i).map(|x|events.push(x));
         }
 
-        self.sound_state = desired_state;
+        self.sound_state[i] = desired_state;
 
         // create and send the packet
         let packet = Self::to_osc_msg(&events);

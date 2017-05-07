@@ -147,7 +147,10 @@ impl OSCManager {
 
     fn sendmsg(addr: &'static str, mut rx: std::sync::mpsc::Receiver<rosc::OscPacket>) {
         loop {
+            println!("trying to connect {}", addr);
             Self::sconnect(addr, &mut rx);
+            println!("connection lost");
+
         }
     }
 
@@ -157,6 +160,7 @@ impl OSCManager {
             Err(_) => return,
         };
 
+            println!("connected!");
 
         if stream.set_nodelay(true).is_err() {
             warn!("set_nodelay call failed");
@@ -167,6 +171,8 @@ impl OSCManager {
                 Ok(data) => data,
                 Err(_) => return,
             };
+            println!("sending messgae!");
+            
             stream.write_all(&data);
         }
     }

@@ -6,8 +6,8 @@ use super::anim;
 
 pub const LEDSCAPE_NUM_STRIPS: usize = 48;
 
-static pru0_program: &'static [u8] = include_bytes!("../lib/bin/ws2801-rgb-123-v3-pru0.bin");
-static pru1_program: &'static [u8] = include_bytes!("../lib/bin/ws2801-rgb-123-v3-pru1.bin");
+static pru0_program: &'static [u8] = include_bytes!("../lib/bin/ws281x-rgb-123-v3-pru0.bin");
+static pru1_program: &'static [u8] = include_bytes!("../lib/bin/ws281x-rgb-123-v3-pru1.bin");
 
 #[repr(C, packed)]
 struct ledscape_pixel_t {
@@ -132,6 +132,7 @@ impl LEDScape {
     }
 
     pub fn draw(&mut self, frame_num: FramedIndex) {
+        trace!("drawing frame!");
         unsafe { ledscape_draw(self.h, frame_num as libc::c_uint) };
     }
 
@@ -167,6 +168,8 @@ impl anim::LedArray for LedscapeLedArray {
 
     fn set_color_rgba(&mut self, lednum: usize, r: u8, g: u8, b: u8, a: u8) {
         let (stripindex, ledindex) = (lednum / self.strip_size, lednum % self.strip_size);
+    //    debug!("drawing frame! {} {} : {} {} {} {} ",stripindex, ledindex,r, g, b, a );
+        
         self.frame.set_pixel(stripindex, ledindex, r, g, b, a);
     }
 

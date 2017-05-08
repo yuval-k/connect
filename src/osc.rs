@@ -147,9 +147,9 @@ impl OSCManager {
 
     fn sendmsg(addr: &'static str, mut rx: std::sync::mpsc::Receiver<rosc::OscPacket>) {
         loop {
-            println!("trying to connect {}", addr);
+            info!("trying to connect {}", addr);
             Self::sconnectudp(addr, &mut rx);
-            println!("connection lost");
+            warn!("connection lost");
 
         }
     }
@@ -160,7 +160,7 @@ impl OSCManager {
             Err(_) => return,
         };
 
-            println!("connected!");
+            info!("connected!");
 
         if stream.set_nodelay(true).is_err() {
             warn!("set_nodelay call failed");
@@ -171,10 +171,10 @@ impl OSCManager {
                 Ok(data) => data,
                 Err(_) => return,
             };
-            println!("sending messgae!");
+            info!("sending messgae!");
             
             if stream.write_all(&data).is_err() {
-            println!("error sending message!");
+                 error!("error sending message!");
                 
                 return
             }
@@ -187,18 +187,17 @@ impl OSCManager {
             Err(_) => return,
         };
 
-            println!("udb bound!");
+            info!("udb bound!");
 
         for msg in rx.iter() {
             let data = match rosc::encoder::encode(&msg) {
                 Ok(data) => data,
                 Err(_) => return,
             };
-            println!("udp sending messgae!");
+            info!("udp sending messgae!");
             
             if socket.send_to(&data, addr).is_err() {
-            println!("error sending udp message!");
-                
+                error!("error sending udp message!");
                 return
             }
         }

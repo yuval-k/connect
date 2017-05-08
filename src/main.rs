@@ -6,6 +6,7 @@ extern crate bit_set;
 extern crate rosc;
 #[macro_use]
 extern crate log;
+extern crate env_logger;
 
 #[macro_use]
 extern crate bitflags;
@@ -73,7 +74,24 @@ impl<'a> anim::LedArray for PoleLedArrayAdapter<'a> {
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 fn get_led_array() -> ledscape::LedscapeLedArray {
-    ledscape::LedscapeLedArray::new(LEDS_PER_STRING)
+    use anim::LedArray;
+    let mut l = ledscape::LedscapeLedArray::new(LEDS_PER_STRING);
+    for i in 0..l.len() {
+        l.set_color_rgba(i,255,0,0,255);
+    }
+    l.show();
+        std::thread::sleep_ms(1000);
+    for i in 0..l.len() {
+        l.set_color_rgba(i,0,255,0,255);
+    }
+    l.show();
+        std::thread::sleep_ms(1000);
+    for i in 0..l.len() {
+        l.set_color_rgba(i,0,0,255,255);
+    }
+    l.show();
+        std::thread::sleep_ms(1000);
+        l
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -140,6 +158,9 @@ fn get_eventer() -> StdinEventSource {
 
 fn main() {
 
+    env_logger::init().unwrap();
+
+    info!("hello");
     let mut ledscapecontroller: Box<anim::LedArray> = match std::env::var("OPCSERVER") {
         Ok(val) => Box::new(get_opc_array(&val).expect("can't connect")),
         Err(_) => Box::new(get_led_array()),
@@ -250,7 +271,7 @@ fn work<F>(mut draw_poles: F,
 {
 
     let mut touches = TouchMap::new(timeout);
-    let mut animator = animations::Animator::new(osc::OSCManager::new("localhost:1234"));
+    let mut animator = animations::Animator::new(osc::OSCManager::new("192.168.1.22:8100"));
 
     let mut last_anim_time = std::time::Instant::now();
     for event in receiver.into_iter() {
@@ -287,7 +308,6 @@ pub enum PoleAnimations {
     Connecting,
     Exoloding,
 }
-
 
 #[derive(Clone,Debug)]
 pub struct Pole {

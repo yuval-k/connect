@@ -19,3 +19,5 @@ bitflags = "0.8"
 
 
 serial = "0.3"
+
+clap = "2.23.3"

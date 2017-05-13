@@ -8,6 +8,8 @@ extern crate rosc;
 extern crate log;
 extern crate env_logger;
 extern crate serial;
+#[macro_use]
+extern crate clap;
 
 #[macro_use]
 extern crate bitflags;
@@ -105,7 +107,7 @@ fn get_opc_array(adrr: &str) -> std::io::Result<opc::OPCLedArray> {
     Ok(opc::OPCLedArray::new(LEDS_PER_STRING * NUM_POLES, adrr)?)
 }
 
-trait Eventer {
+trait Eventer : std::marker::Send {
     fn get_events(&mut self, sender: std::sync::mpsc::Sender<Events>);
 
     fn get_timeout(&self) -> std::time::Duration;
@@ -161,26 +163,39 @@ impl Eventer for StdinEventSource {
     }
 }
 
-struct SerialEventSource;
+struct SerialEventSource {
+    devicefile : String
+}
+
+impl SerialEventSource {
+
+    fn new(devicefile : &str) -> Self {
+        SerialEventSource{
+            devicefile : devicefile.to_string(),
+        }
+    }
+
+}
+
 impl Eventer for SerialEventSource {
     fn get_events(&mut self, mut sender: std::sync::mpsc::Sender<Events>) {
         loop {
-            self.eventloop(&mut sender);
+            let err = self.eventloop(&mut sender);
+            warn!("Event loop returned unxpectedly {:?}", err);
             std::thread::sleep(std::time::Duration::from_secs(1));
         }
 
     }
 
     fn get_timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(1)
+        std::time::Duration::from_secs(2)
     }
 }
 
 impl SerialEventSource {
     fn eventloop(&mut self, sender: &mut std::sync::mpsc::Sender<Events>) -> std::io::Result<()> {
-        let device = "/dev/ttyACM0";
 
-        let mut port = serial::open(device)?;
+        let mut port = serial::open(&self.devicefile)?;
         port.reconfigure(&|settings| {
                 settings.set_baud_rate(serial::Baud115200)?;
                 settings.set_char_size(serial::Bits8);
@@ -190,7 +205,7 @@ impl SerialEventSource {
                 Ok(())
             })?;
 
-        port.set_timeout(std::time::Duration::from_millis(100))?;
+        port.set_timeout(std::time::Duration::from_secs(10))?;
 
         let mut reader = std::io::BufReader::new(port);
 
@@ -199,10 +214,16 @@ impl SerialEventSource {
         loop {
             line.clear();
             reader.read_line(&mut line)?;
+
+
+
             let indexes: Result<Vec<usize>, _> =
-                line.split(':').map(|s| s.parse::<usize>()).collect();
+                line.trim().split(':').map(|s| s.parse::<usize>()).collect();
+
+            debug!("serial line: {}", line);
             match indexes {
-                Err(_) => {
+                Err(e) => {
+                    warn!("error parsing serial line {:?}", e);
                     continue;
                 }
                 Ok(v) => {
@@ -222,7 +243,7 @@ impl SerialEventSource {
         for i in 0..NUM_POLES {
             let event = match touches.iter().find(|&&x| x == i) {
                 None => Events::Stop(EventTypes::Connect(senderindex, i)),
-                Some(_) => Events::Start(EventTypes::Connect(senderindex, i)),
+                Some(_) => {debug!("Connect({},{})", senderindex, i);Events::Start(EventTypes::Connect(senderindex, i))},
             };
             sender.send(event);
         }
@@ -230,11 +251,29 @@ impl SerialEventSource {
     }
 }
 
-fn get_eventer() -> StdinEventSource {
-    StdinEventSource
+fn get_eventer(s : &str) -> Box<Eventer> {
+    if s == "stdin" {
+        Box::new(StdinEventSource)
+    } else {
+        Box::new(SerialEventSource::new(s))
+    }
 }
 
 fn main() {
+
+    let matches = clap::App::new("connect server")
+        .about("connects people")
+       // use crate_version! to pull the version number
+       .version(crate_version!()).arg(clap::Arg::with_name("device")
+                                    .short("d")
+                                    .long("device")
+                                    .value_name("FILE")
+                                    .help("The device to program")
+                                    .takes_value(true))
+                               .get_matches();
+
+    let device = matches.value_of("device").unwrap_or("/dev/ttyUSB0");
+
 
     env_logger::init().unwrap();
 
@@ -260,7 +299,7 @@ fn main() {
         }
     });
 
-    let eventer = get_eventer();
+    let eventer = get_eventer(device);
     let timeout = eventer.get_timeout();
 
     let newtx = tx.clone();

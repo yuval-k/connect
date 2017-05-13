@@ -168,8 +168,8 @@ impl anim::LedArray for LedscapeLedArray {
 
     fn set_color_rgba(&mut self, lednum: usize, r: u8, g: u8, b: u8, a: u8) {
         let (stripindex, ledindex) = (lednum / self.strip_size, lednum % self.strip_size);
-    //    debug!("drawing frame! {} {} : {} {} {} {} ",stripindex, ledindex,r, g, b, a );
-        
+        //    debug!("drawing frame! {} {} : {} {} {} {} ",stripindex, ledindex,r, g, b, a );
+
         self.frame.set_pixel(stripindex, ledindex, r, g, b, a);
     }
 

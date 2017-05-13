@@ -7,12 +7,14 @@ extern crate rosc;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+extern crate serial;
 
 #[macro_use]
 extern crate bitflags;
 
 use std::sync::mpsc;
 use std::io::BufRead;
+use serial::SerialPort;
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 mod ledscape;
@@ -77,21 +79,21 @@ fn get_led_array() -> ledscape::LedscapeLedArray {
     use anim::LedArray;
     let mut l = ledscape::LedscapeLedArray::new(LEDS_PER_STRING);
     for i in 0..l.len() {
-        l.set_color_rgba(i,255,0,0,255);
+        l.set_color_rgba(i, 255, 0, 0, 255);
     }
     l.show();
-        std::thread::sleep_ms(1000);
+    std::thread::sleep_ms(1000);
     for i in 0..l.len() {
-        l.set_color_rgba(i,0,255,0,255);
+        l.set_color_rgba(i, 0, 255, 0, 255);
     }
     l.show();
-        std::thread::sleep_ms(1000);
+    std::thread::sleep_ms(1000);
     for i in 0..l.len() {
-        l.set_color_rgba(i,0,0,255,255);
+        l.set_color_rgba(i, 0, 0, 255, 255);
     }
     l.show();
-        std::thread::sleep_ms(1000);
-        l
+    std::thread::sleep_ms(1000);
+    l
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -103,10 +105,17 @@ fn get_opc_array(adrr: &str) -> std::io::Result<opc::OPCLedArray> {
     Ok(opc::OPCLedArray::new(LEDS_PER_STRING * NUM_POLES, adrr)?)
 }
 
+trait Eventer {
+    fn get_events(&mut self, sender: std::sync::mpsc::Sender<Events>);
+
+    fn get_timeout(&self) -> std::time::Duration;
+}
+
 struct StdinEventSource;
 
-impl StdinEventSource {
-    fn get_event(&mut self) -> Events {
+
+impl Eventer for StdinEventSource {
+    fn get_events(&mut self, mut sender: std::sync::mpsc::Sender<Events>) {
         let stdin = std::io::stdin();
         let mut handle = stdin.lock();
         loop {
@@ -133,11 +142,11 @@ impl StdinEventSource {
             match (stop, pole1, pole2) {
                 (false, Ok(p1), Ok(p2)) => {
                     println!("sending touch event {} {}", p1, p2);
-                    return Events::Start(EventTypes::Connect(p1, p2));
+                    sender.send(Events::Start(EventTypes::Connect(p1, p2)));
                 }
                 (true, Ok(p1), Ok(p2)) => {
                     println!("sending stop touch event {} {}", p1, p2);
-                    return Events::Stop(EventTypes::Connect(p1, p2));
+                    sender.send(Events::Stop(EventTypes::Connect(p1, p2)));
                 }
                 _ => {
                     println!("invalid input! - two numbers please");
@@ -149,6 +158,75 @@ impl StdinEventSource {
 
     fn get_timeout(&self) -> std::time::Duration {
         std::time::Duration::from_secs(1000)
+    }
+}
+
+struct SerialEventSource;
+impl Eventer for SerialEventSource {
+    fn get_events(&mut self, mut sender: std::sync::mpsc::Sender<Events>) {
+        loop {
+            self.eventloop(&mut sender);
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+
+    }
+
+    fn get_timeout(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(1)
+    }
+}
+
+impl SerialEventSource {
+    fn eventloop(&mut self, sender: &mut std::sync::mpsc::Sender<Events>) -> std::io::Result<()> {
+        let device = "/dev/ttyACM0";
+
+        let mut port = serial::open(device)?;
+        port.reconfigure(&|settings| {
+                settings.set_baud_rate(serial::Baud115200)?;
+                settings.set_char_size(serial::Bits8);
+                settings.set_parity(serial::ParityNone);
+                settings.set_stop_bits(serial::Stop1);
+                settings.set_flow_control(serial::FlowNone);
+                Ok(())
+            })?;
+
+        port.set_timeout(std::time::Duration::from_millis(100))?;
+
+        let mut reader = std::io::BufReader::new(port);
+
+        let mut line = String::new();
+
+        loop {
+            line.clear();
+            reader.read_line(&mut line)?;
+            let indexes: Result<Vec<usize>, _> =
+                line.split(':').map(|s| s.parse::<usize>()).collect();
+            match indexes {
+                Err(_) => {
+                    continue;
+                }
+                Ok(v) => {
+                    if !v.is_empty() {
+                        self.send_events(sender, v[0], &v[1..]);
+                    }
+                }
+            }
+        }
+    }
+
+    fn send_events(&mut self,
+                   sender: &mut std::sync::mpsc::Sender<Events>,
+                   senderindex: usize,
+                   touches: &[usize]) {
+
+        for i in 0..NUM_POLES {
+            let event = match touches.iter().find(|&&x| x == i) {
+                None => Events::Stop(EventTypes::Connect(senderindex, i)),
+                Some(_) => Events::Start(EventTypes::Connect(senderindex, i)),
+            };
+            sender.send(event);
+        }
+
     }
 }
 
@@ -189,9 +267,8 @@ fn main() {
     std::thread::spawn(move || {
         let tx = newtx;
         let mut eventer = eventer;
-        loop {
-            tx.send(eventer.get_event()).expect("failed to send event to logic!");;
-        }
+        eventer.get_events(tx);
+        panic!("event loop should be endless")
     });
 
     work(move |poles| draw_poles_to_array(ledscapecontroller.as_mut(), poles),

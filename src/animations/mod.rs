@@ -64,23 +64,23 @@ pub struct Animator {
     idle_anim: idle::IdleAnim,
     backgroundsprites: Vec<Box<PoleAnimation>>,
     sprites: Vec<Box<PoleAnimation>>,
-    osc : super::osc::OSCManager,
+    osc: super::osc::OSCManager,
 }
 
 impl Animator {
-    pub fn new(osc : super::osc::OSCManager) -> Self {
+    pub fn new(osc: super::osc::OSCManager) -> Self {
         Animator {
             idle_anim: idle::IdleAnim::new(),
             sprites: vec![],
             backgroundsprites: vec![],
-            osc : osc,
+            osc: osc,
         }
     }
 
     pub fn animate_poles(&mut self,
-                     poles: &mut [super::Pole],
-                     touches: &super::TouchMap,
-                     delta: std::time::Duration) {
+                         poles: &mut [super::Pole],
+                         touches: &super::TouchMap,
+                         delta: std::time::Duration) {
         use animations::touch::SinglePoleAnimation;
 
         let black = palette::Hsl::new(palette::RgbHue::from_radians(0.), 0., 0.);
@@ -112,7 +112,7 @@ impl Animator {
         // find out all connection.
         // each pole should have an animation assigned to it.
         //
-        let mut oscmessages : Vec<super::osc::OSCEvent> = vec![];
+        let mut oscmessages: Vec<super::osc::OSCEvent> = vec![];
         for (i, row) in touches.touches.iter().enumerate() {
             oscmessages.truncate(0);
             let mut current_touches: bit_set::BitSet =
@@ -142,18 +142,26 @@ impl Animator {
 
             let mut sound_state_changed = false;
 
-//            if self.transition(i, &mut oscmessages, &old_state, &new_state) {
+            //            if self.transition(i, &mut oscmessages, &old_state, &new_state) {
             if old_state != new_state {
                 // change animation
                 new_anim = match new_state {
-                    super::PoleState::NotTouched => {sound_state_changed = true; None},
-                    super::PoleState::Touched => {sound_state_changed = true; Some(super::PoleAnimations::Touching)},
+                    super::PoleState::NotTouched => {
+                        sound_state_changed = true;
+                        None
+                    }
+                    super::PoleState::Touched => {
+                        sound_state_changed = true;
+                        Some(super::PoleAnimations::Touching)
+                    }
                     // if one of the other poles in the change has level == 1 then exploding
                     super::PoleState::ConnectedTo(_) => {
                         /* TODO: re calc colors */
                         match old_state {
-                             super::PoleState::ConnectedTo(_) => {},
-                            _ => {sound_state_changed = true;},
+                            super::PoleState::ConnectedTo(_) => {}
+                            _ => {
+                                sound_state_changed = true;
+                            }
                         };
 
                         Some(super::PoleAnimations::Connecting)
@@ -166,13 +174,14 @@ impl Animator {
             // do this every frame.
             if let super::PoleState::ConnectedTo(ref others) = new_state {
                 let was_exploding = poles[i].anim == Some(super::PoleAnimations::Exoloding);
-                let is_exploding = poles[i].level == 1. && others.iter().any(|i| poles[i].level == 1.);
+                let is_exploding = poles[i].level == 1. &&
+                                   others.iter().any(|i| poles[i].level == 1.);
                 if is_exploding {
                     new_anim = Some(super::PoleAnimations::Exoloding);
                 }
                 if was_exploding != is_exploding {
-                        // TODO: send midi signal should_send = true;
-                        sound_state_changed = true;
+                    // TODO: send midi signal should_send = true;
+                    sound_state_changed = true;
                 }
             }
 
@@ -183,7 +192,7 @@ impl Animator {
             }
 
         }
-    
+
         //send midi
 
 
@@ -253,7 +262,12 @@ impl Animator {
     }
 
 
-    fn transition(&self, i : usize, generatedevents : &mut Vec<super::osc::OSCEvent>, old_state: &super::PoleState, new_state: &super::PoleState) -> bool {
+    fn transition(&self,
+                  i: usize,
+                  generatedevents: &mut Vec<super::osc::OSCEvent>,
+                  old_state: &super::PoleState,
+                  new_state: &super::PoleState)
+                  -> bool {
 
         match *old_state {
             super::PoleState::NotTouched => {

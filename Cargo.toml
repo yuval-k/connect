@@ -16,3 +16,6 @@ tk-opc = "0.1"
 bit-set = "0.4.0"
 rosc = "~0.1"
 bitflags = "0.8"
+
+
+serial = "0.3"

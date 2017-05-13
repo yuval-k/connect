@@ -40,8 +40,8 @@ bitflags! {
 
 pub struct OSCManager {
     sender: std::sync::mpsc::Sender<rosc::OscPacket>,
-    risers : usize,
-    sound_state : [SoundState; super::NUM_POLES],
+    risers: usize,
+    sound_state: [SoundState; super::NUM_POLES],
 }
 
 
@@ -51,25 +51,39 @@ impl OSCManager {
 
         std::thread::spawn(move || Self::sendmsg(addr, rx));
 
-        OSCManager { sender: tx , risers : 0, sound_state : [SoundState::empty() ; super::NUM_POLES]}
+        OSCManager {
+            sender: tx,
+            risers: 0,
+            sound_state: [SoundState::empty(); super::NUM_POLES],
+        }
     }
 
-    pub fn update_sound(&mut self, i : usize, old_state : Option<super::PoleAnimations>, current_state : Option<super::PoleAnimations>) {
+    pub fn update_sound(&mut self,
+                        i: usize,
+                        old_state: Option<super::PoleAnimations>,
+                        current_state: Option<super::PoleAnimations>) {
         let current_sound_state = self.sound_state[i];
         let mut desired_state = SoundState::empty();
         // Cancel old state
-        match  current_state {
-            None => {/* nothing to do */ },
-            Some(super::PoleAnimations::Touching) => {desired_state = Touch;},
-            Some(super::PoleAnimations::Connecting) => {desired_state = Riser | Touch ;/* send off to rise event. potentially to touch event as well if new state is none?! */ },
-            Some(super::PoleAnimations::Exoloding) => {desired_state = HighTouch;},
+        match current_state {
+            None => { /* nothing to do */ }
+            Some(super::PoleAnimations::Touching) => {
+                desired_state = Touch;
+            }
+            Some(super::PoleAnimations::Connecting) => {
+                desired_state = Riser | Touch; /* send off to rise event. potentially to touch event as well if new state is none?! */
+            }
+            Some(super::PoleAnimations::Exoloding) => {
+                desired_state = HighTouch;
+            }
         }
 
         let to_add = desired_state - current_sound_state;
-        let to_remove =  current_sound_state - desired_state;
-        let is_exploding = (old_state !=  Some(super::PoleAnimations::Exoloding)) && (current_state == Some(super::PoleAnimations::Exoloding));
-       
-        let mut events : Vec<OSCEvent> = vec![];
+        let to_remove = current_sound_state - desired_state;
+        let is_exploding = (old_state != Some(super::PoleAnimations::Exoloding)) &&
+                           (current_state == Some(super::PoleAnimations::Exoloding));
+
+        let mut events: Vec<OSCEvent> = vec![];
         // remove old state
         if to_remove.contains(Touch) {
             events.push(OSCEvent::UnTouch(i));
@@ -78,7 +92,7 @@ impl OSCManager {
             events.push(OSCEvent::UnHiTouch(i));
         }
         if to_remove.contains(Riser) {
-            self.remove_riser(i).map(|x|events.push(x));
+            self.remove_riser(i).map(|x| events.push(x));
         }
 
         // explode?
@@ -95,7 +109,7 @@ impl OSCManager {
             events.push(OSCEvent::HiTouch(i));
         }
         if to_add.contains(Riser) {
-            self.add_riser(i).map(|x|events.push(x));
+            self.add_riser(i).map(|x| events.push(x));
         }
 
         self.sound_state[i] = desired_state;
@@ -105,11 +119,11 @@ impl OSCManager {
 
         self.sender.send(packet);
 
-    
+
     }
 
 
-    fn add_riser(&mut self, i : usize) -> Option<OSCEvent> {
+    fn add_riser(&mut self, i: usize) -> Option<OSCEvent> {
         self.risers += 1;
         // 2 poles in a chain.. we can notified twice for each
         let risers = self.risers >> 1;
@@ -127,7 +141,7 @@ impl OSCManager {
     }
 
 
-    fn remove_riser(&mut self, i : usize) -> Option<OSCEvent> {
+    fn remove_riser(&mut self, i: usize) -> Option<OSCEvent> {
         // 2 poles in a chain.. we can notified twice for each
         let risers = self.risers >> 1;
 
@@ -160,7 +174,7 @@ impl OSCManager {
             Err(_) => return,
         };
 
-            info!("connected!");
+        info!("connected!");
 
         if stream.set_nodelay(true).is_err() {
             warn!("set_nodelay call failed");
@@ -172,11 +186,11 @@ impl OSCManager {
                 Err(_) => return,
             };
             info!("sending messgae!");
-            
+
             if stream.write_all(&data).is_err() {
-                 error!("error sending message!");
-                
-                return
+                error!("error sending message!");
+
+                return;
             }
         }
     }
@@ -187,7 +201,7 @@ impl OSCManager {
             Err(_) => return,
         };
 
-            info!("udb bound!");
+        info!("udb bound!");
 
         for msg in rx.iter() {
             let data = match rosc::encoder::encode(&msg) {
@@ -195,10 +209,10 @@ impl OSCManager {
                 Err(_) => return,
             };
             info!("udp sending messgae!");
-            
+
             if socket.send_to(&data, addr).is_err() {
                 error!("error sending udp message!");
-                return
+                return;
             }
         }
     }

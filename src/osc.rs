@@ -46,9 +46,9 @@ pub struct OSCManager {
 
 
 impl OSCManager {
-    pub fn new(addr: &'static str) -> Self {
+    pub fn new(addr: &str) -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
-
+        let addr = addr.to_string();
         std::thread::spawn(move || Self::sendmsg(addr, rx));
 
         OSCManager {
@@ -159,16 +159,16 @@ impl OSCManager {
     }
 
 
-    fn sendmsg(addr: &'static str, mut rx: std::sync::mpsc::Receiver<rosc::OscPacket>) {
+    fn sendmsg(addr: String, mut rx: std::sync::mpsc::Receiver<rosc::OscPacket>) {
         loop {
-            info!("trying to connect {}", addr);
-            Self::sconnectudp(addr, &mut rx);
+            info!("trying to connect {}", &addr);
+            Self::sconnectudp(&addr, &mut rx);
             warn!("connection lost");
 
         }
     }
 
-    fn sconnect(addr: &'static str, rx: &mut std::sync::mpsc::Receiver<rosc::OscPacket>) {
+    fn sconnect(addr: &str, rx: &mut std::sync::mpsc::Receiver<rosc::OscPacket>) {
         let mut stream = match std::net::TcpStream::connect(addr) {
             Ok(stream) => stream,
             Err(_) => return,
@@ -195,7 +195,7 @@ impl OSCManager {
         }
     }
 
-    fn sconnectudp(addr: &'static str, rx: &mut std::sync::mpsc::Receiver<rosc::OscPacket>) {
+    fn sconnectudp(addr: &str, rx: &mut std::sync::mpsc::Receiver<rosc::OscPacket>) {
         let mut socket = match std::net::UdpSocket::bind("0.0.0.0:0") {
             Ok(stream) => stream,
             Err(_) => return,

@@ -15,8 +15,6 @@ extern crate clap;
 extern crate bitflags;
 
 use std::sync::mpsc;
-use std::io::BufRead;
-use serial::SerialPort;
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 mod ledscape;
@@ -25,6 +23,7 @@ mod anim;
 mod animations;
 mod opc;
 mod osc;
+mod events;
 
 use anim::Drawer;
 
@@ -37,6 +36,7 @@ enum EventTypes {
 enum Events {
     Start(EventTypes),
     Stop(EventTypes),
+    Reset,
     Draw,
 }
 
@@ -107,236 +107,6 @@ fn get_opc_array(adrr: &str) -> std::io::Result<opc::OPCLedArray> {
     Ok(opc::OPCLedArray::new(LEDS_PER_STRING * NUM_POLES, adrr)?)
 }
 
-trait Eventer: std::marker::Send {
-    fn get_events(&mut self, sender: std::sync::mpsc::Sender<Events>);
-
-    fn get_timeout(&self) -> std::time::Duration;
-}
-
-struct StdinEventSource;
-
-
-impl Eventer for StdinEventSource {
-    fn get_events(&mut self, mut sender: std::sync::mpsc::Sender<Events>) {
-        let stdin = std::io::stdin();
-        let mut handle = stdin.lock();
-        loop {
-
-            let mut buffer = String::new();
-            handle.read_line(&mut buffer).expect("can't read");
-
-            let mut words: Vec<&str> = buffer.split_whitespace().collect();
-
-            if (words.len() != 2) && (words.len() != 3) {
-                println!("invalid input - exactly two or three!");
-                continue;
-            }
-            let mut stop = false;
-            if words.len() == 3 {
-                words.remove(0);
-                stop = true;
-            }
-            let word1 = words[0];
-            let word2 = words[1];
-            let (pole1, pole2) = (word1.parse::<usize>(), word2.parse::<usize>());
-
-            //            let ourtimeout = std::time::Duration::from_secs(1000);
-            match (stop, pole1, pole2) {
-                (false, Ok(p1), Ok(p2)) => {
-                    println!("sending touch event {} {}", p1, p2);
-                    sender.send(Events::Start(EventTypes::Connect(p1, p2)));
-                }
-                (true, Ok(p1), Ok(p2)) => {
-                    println!("sending stop touch event {} {}", p1, p2);
-                    sender.send(Events::Stop(EventTypes::Connect(p1, p2)));
-                }
-                _ => {
-                    println!("invalid input! - two numbers please");
-                }
-            }
-
-        }
-    }
-
-    fn get_timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(1000)
-    }
-}
-
-struct SerialEventSource {
-    devicefile: String,
-}
-
-impl SerialEventSource {
-    fn new(devicefile: &str) -> Self {
-        SerialEventSource { devicefile: devicefile.to_string() }
-    }
-}
-
-impl Eventer for SerialEventSource {
-    fn get_events(&mut self, mut sender: std::sync::mpsc::Sender<Events>) {
-        loop {
-            let err = self.eventloop(&mut sender);
-            warn!("Event loop returned unxpectedly {:?}", err);
-            std::thread::sleep(std::time::Duration::from_secs(1));
-        }
-    }
-
-    fn get_timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(1000)
-    }
-}
-
-impl SerialEventSource {
-    #[cfg(target_os = "linux")]
-    fn auto_detect() -> String {
-        // /dev/ttyACM* or /dev/ttyUSB*
-        let dir = std::path::Path::new("/dev/");
-        let res = std::fs::read_dir(dir);
-        if let Ok(readir) = res {
-            for entry in readir {
-                if let Ok(entry) = entry {
-                    if let Ok(meta) = entry.metadata() {
-                        if !meta.is_dir() {
-                            if let Some(name) = entry.file_name().to_str() {
-                                if name.starts_with("ttyACM") || name.starts_with("ttyUSB") {
-                                    if let Some(path) = entry.path().to_str() {
-                                        return path.to_string();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-
-        }
-
-        String::new()
-    }
-
-
-    #[cfg(not(target_os = "linux"))]
-    fn auto_detect() -> String {
-        panic!("Must provide serial device file name; for testing use filename \"stdin\" to get \
-                interactive input");
-    }
-
-    fn eventloop(&mut self, sender: &mut std::sync::mpsc::Sender<Events>) -> std::io::Result<()> {
-
-        let mut devicefile = self.devicefile.clone();
-        if devicefile.is_empty() {
-            devicefile = Self::auto_detect();
-        }
-
-        if devicefile.is_empty() {
-            use std::io::{Error, ErrorKind};
-            return Err(Error::new(ErrorKind::NotFound, "no serial device found"));
-        }
-
-        let mut port = serial::open(&self.devicefile)?;
-        port.reconfigure(&|settings| {
-                settings.set_baud_rate(serial::Baud115200)?;
-                settings.set_char_size(serial::Bits8);
-                settings.set_parity(serial::ParityNone);
-                settings.set_stop_bits(serial::Stop1);
-                settings.set_flow_control(serial::FlowNone);
-                Ok(())
-            })?;
-
-        port.set_timeout(std::time::Duration::from_secs(10))?;
-
-        let mut reader = std::io::BufReader::new(port);
-
-        let mut line = String::new();
-
-        let mut events: [[[bool; NUM_POLES]; NUM_POLES]; 2] = [[[false; NUM_POLES]; NUM_POLES]; 2];
-        let mut currentindex: usize = 0;
-        let mut pastindex: usize = 1;
-
-        loop {
-            line.clear();
-            reader.read_line(&mut line)?;
-
-
-
-            let indexes: Result<Vec<usize>, _> =
-                line.trim().split(':').map(|s| s.parse::<usize>()).collect();
-
-            debug!("serial line: {}", line);
-            match indexes {
-                Err(e) => {
-                    warn!("error parsing serial line {:?}", e);
-                    continue;
-                }
-                Ok(v) => {
-                    if !v.is_empty() {
-                        let senderindex = v[0];
-  
-                        Self::set_events(&mut events[currentindex], senderindex, &v[1..]);
-
-                        if senderindex == (NUM_POLES-1) {
-                            Self::send_events(sender, &events[pastindex], &events[currentindex]);
-                            let tmp = currentindex;
-                            currentindex = pastindex;
-                            pastindex = tmp;
-                            for e in events[currentindex].iter_mut() {
-                                for b in e.iter_mut() {
-                                    *b = false;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fn set_events(events: &mut [[bool; NUM_POLES]; NUM_POLES],
-                  senderindex: usize,
-                  touches: &[usize]) {
-        if senderindex >= NUM_POLES {
-            return;
-        }
-        for ind in touches.iter().filter(|&x| *x < NUM_POLES) {
-            events[senderindex][*ind] = true;
-            events[*ind][senderindex] = true;
-        }
-    }
-    fn send_events(sender: &mut std::sync::mpsc::Sender<Events>,
-                   pastevents: &[[bool; NUM_POLES]; NUM_POLES],
-                   events: &[[bool; NUM_POLES]; NUM_POLES]) {
-
-
-        for i in 0..NUM_POLES {
-            for j in i..NUM_POLES {
-                if events[i][j] != pastevents[i][j] {
-                    let event = match events[i][j] {
-                        false => {
-                            debug!("Not Connected({},{})", i, j);
-                            Events::Stop(EventTypes::Connect(i, j))
-                        }
-                        true => {
-                            debug!("Connect({},{})", i, j);
-                            Events::Start(EventTypes::Connect(i, j))
-                        }
-                    };
-                    sender.send(event);
-                }
-            }
-        }
-
-    }
-}
-
-fn get_eventer(s: &str) -> Box<Eventer> {
-    if s == "stdin" {
-        Box::new(StdinEventSource)
-    } else {
-        Box::new(SerialEventSource::new(s))
-    }
-}
 
 fn main() {
 
@@ -361,6 +131,11 @@ fn main() {
                                     .value_name("OPC_SERVER")
                                     .help("The open pixel control to send osc signals to")
                                     .takes_value(true))
+                                .arg(clap::Arg::with_name("rgb")
+                                    .long("rgb")
+                                    .value_name("RGB")
+                                    .help("RGB order")
+                                    .takes_value(true))
                                .get_matches();
 
     let device = matches.value_of("device")
@@ -372,16 +147,21 @@ fn main() {
     let opc_server = matches.value_of("opc_server")
         .map(|s| s.to_string())
         .unwrap_or(std::env::var("OPC_SERVER").unwrap_or(String::new()));
+    let rgb = matches.value_of("rgb")
+        .map(|s| anim::RgbOrder::new(s).expect("Invalid rgb value!"))
+        .unwrap_or(anim::RgbOrder::Rgb);
 
 
     env_logger::init().unwrap();
 
     info!("hello");
-    let mut ledscapecontroller: Box<anim::LedArray> = if opc_server.is_empty() {
+    let ledscapecontroller: Box<anim::LedArray> = if opc_server.is_empty() {
         Box::new(get_led_array())
     } else {
         Box::new(get_opc_array(&opc_server).expect("can't connect"))
     };
+
+    let mut ledscapecontroller = Box::new(anim::RgbLedArray::new(ledscapecontroller, rgb));
 
     // TODO add OPCCLient
 
@@ -399,7 +179,7 @@ fn main() {
         }
     });
 
-    let eventer = get_eventer(&device);
+    let eventer = events::get_eventer(&device);
     let timeout = eventer.get_timeout();
 
     let newtx = tx.clone();
@@ -480,6 +260,13 @@ impl TouchMap {
         self.touches[pole1][pole2] = None;
         self.touches[pole2][pole1] = None;
     }
+    pub fn reset(&mut self) {
+        for tmp in self.touches.iter_mut() {
+            for t in tmp.iter_mut() {
+                *t = None;
+            }
+        }
+    }
 }
 
 fn work<F>(mut draw_poles: F,
@@ -500,6 +287,9 @@ fn work<F>(mut draw_poles: F,
             }
             Events::Stop(EventTypes::Connect(pole1, pole2)) => {
                 touches.disconnect(pole1, pole2);
+            }
+            Events::Reset => {
+                touches.reset();
             }
             Events::Draw => {
                 touches.clean_timeout();

@@ -137,3 +137,6 @@ ceiling touch on
 
 
 sudo apt-get install libjack-jackd2-dev
+
+
+// TODO: change uart to frequency 500-1000 hz

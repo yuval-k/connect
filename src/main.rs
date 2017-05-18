@@ -25,15 +25,38 @@ mod opc;
 mod osc;
 mod events;
 
+#[cfg(feature = "gui")]
+extern crate kiss3d;
+#[cfg(feature = "gui")]
+extern crate serde;
+#[cfg(feature = "gui")]
+extern crate serde_json;
+#[cfg(feature = "gui")]
+extern crate nalgebra;
+#[cfg(feature = "gui")]
+#[macro_use]
+extern crate serde_derive;
+
+#[cfg(feature = "gui")]
+mod gui;
+#[cfg(feature = "gui")]
+fn create_gui() -> Option<Box<anim::LedArray>> {
+    gui::create_gui()
+}
+#[cfg(not(feature = "gui"))]
+fn create_gui() -> Option<Box<anim::LedArray>>{
+    None
+}
+
 use anim::Drawer;
 
 #[derive(Clone,Copy,Debug)]
-enum EventTypes {
+pub enum EventTypes {
     Connect(usize, usize),
 }
 
 #[derive(Clone,Copy,Debug)]
-enum Events {
+pub enum Events {
     Start(EventTypes),
     Stop(EventTypes),
     Reset,
@@ -77,7 +100,7 @@ impl<'a> anim::LedArray for PoleLedArrayAdapter<'a> {
 
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-fn get_led_array() -> ledscape::LedscapeLedArray {
+fn get_led_array() -> Box<anim::LedArray> {
     use anim::LedArray;
     let mut l = ledscape::LedscapeLedArray::new(LEDS_PER_STRING);
     for i in 0..l.len() {
@@ -95,12 +118,15 @@ fn get_led_array() -> ledscape::LedscapeLedArray {
     }
     l.show();
     std::thread::sleep_ms(1000);
-    l
+    Box::new(l)
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn get_led_array() -> opc::OPCLedArray {
-    get_opc_array("127.0.0.1:7890").expect("can't connect")
+fn get_led_array() -> Box<anim::LedArray> {
+    match create_gui(){
+        Some(l)=>l,
+        None =>    Box::new(get_opc_array("127.0.0.1:7890").expect("can't connect"))
+    }
 }
 
 fn get_opc_array(adrr: &str) -> std::io::Result<opc::OPCLedArray> {
@@ -156,7 +182,7 @@ fn main() {
 
     info!("hello");
     let ledscapecontroller: Box<anim::LedArray> = if opc_server.is_empty() {
-        Box::new(get_led_array())
+        get_led_array()
     } else {
         Box::new(get_opc_array(&opc_server).expect("can't connect"))
     };

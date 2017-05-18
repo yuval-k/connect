@@ -159,10 +159,16 @@ impl SerialEventSource {
             line.clear();
             reader.read_line(&mut line)?;
 
-
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            if line.starts_with("#") {
+                continue;
+            }
 
             let indexes: Result<Vec<usize>, _> =
-                line.trim().split(':').map(|s| s.parse::<usize>()).collect();
+                line.split(':').map(|s| s.parse::<usize>()).collect();
 
             debug!("serial line: {}", line);
             match indexes {

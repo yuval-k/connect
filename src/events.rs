@@ -177,10 +177,12 @@ impl SerialEventSource {
                     continue;
                 }
                 Ok(v) => {
-                    if !v.is_empty() {
-                        let senderindex = v[0];
-
-                        Self::set_events(&mut events[currentindex], senderindex, &v[1..]);
+                    if v.len() >= 2 {
+                        let lastheardof = std::time::Duration::from_millis(v[0] as u64);
+                        let senderindex = v[1];
+                        let touching = &v[2..];
+// TODO: add timeout
+                        Self::set_events(&mut events[currentindex], senderindex, touching);
 
                         if senderindex == (NUM_POLES - 1) {
                             Self::send_events(sender, &events[pastindex], &events[currentindex]);

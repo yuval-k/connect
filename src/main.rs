@@ -130,7 +130,7 @@ fn get_led_array() -> Box<anim::LedArray> {
 }
 
 fn get_opc_array(adrr: &str) -> std::io::Result<opc::OPCLedArray> {
-    Ok(opc::OPCLedArray::new(LEDS_PER_STRING * NUM_POLES, adrr)?)
+    Ok(opc::OPCLedArray::new(LEDS_PER_STRING * NUM_POLES, adrr))
 }
 
 
@@ -191,7 +191,10 @@ fn main() {
 
     // TODO add OPCCLient
 
-    let poles = vec![Pole::new(); NUM_POLES];
+    let poles : Vec<Pole> = (0..NUM_POLES).
+    map(|x| 2_f32*std::f32::consts::PI*(x as f32) / (NUM_POLES as  f32)).
+    map(|x| Pole::new(x)).collect();
+
     let (tx, rx) = mpsc::channel();
 
     // 30 fps
@@ -357,14 +360,14 @@ pub struct Pole {
 }
 
 impl Pole {
-    fn new() -> Self {
+    fn new(rads : f32) -> Self {
         Pole {
             level: 0.,
             touch_level: 0.,
             leds:
                 vec![palette::Hsl::new(palette::RgbHue::from_radians(0.),1.,0.5); LEDS_PER_STRING],
             //            pole_state : PoleState::Untouched,
-            base_color: palette::Hsl::new(palette::RgbHue::from_radians(0.), 1., 0.5),
+            base_color: palette::Hsl::new(palette::RgbHue::from_radians(rads), 1., 0.5),
 
             current_color: palette::Hsl::new(palette::RgbHue::from_radians(1.), 1., 0.5),
 

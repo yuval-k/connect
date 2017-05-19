@@ -11,23 +11,36 @@ pub struct OPCLedArray {
 }
 
 impl OPCLedArray {
-    pub fn new(size: usize, address: &str) -> std::io::Result<Self> {
-        let mut stream = std::net::TcpStream::connect(address)?;
+    pub fn new(size: usize, address: &str) -> Self {
+        let address = address.to_string();
         let (sender, receiver) = std::sync::mpsc::channel::<OpcMessage>();
-        std::thread::spawn(move || for msg in receiver.into_iter() {
-            // TODO: write first to vector and use tcp no delay?!
-            let header = msg.header().to_bytes();
-            // TODO implement reconnection logic / change to tokio
-            stream.write_all(&header);
-            let msg: Vec<u8> = msg.message.into();
-            stream.write_all(&msg);
+        std::thread::spawn(move || {
+            loop{
+                Self::work(&receiver, &address);
+                std::thread::sleep(std::time::Duration::from_secs(1));
+            }
+
         });
 
-        Ok(OPCLedArray {
+        OPCLedArray {
             pixels: Pixels::new(size),
             sender: sender,
-        })
+        }
 
+    }
+
+    fn work(receiver :& std::sync::mpsc::Receiver<OpcMessage> , address : &str) -> std::io::Result<()> {
+
+            let mut stream = std::net::TcpStream::connect(address)?;
+            for msg in receiver.iter() {
+                        // TODO: write first to vector and use tcp no delay?!
+                        let header = msg.header().to_bytes();
+                        // TODO implement reconnection logic / change to tokio
+                        stream.write_all(&header)?;
+                        let msg: Vec<u8> = msg.message.into();
+                        stream.write_all(&msg)?;
+                }
+        Ok(())
     }
 }
 

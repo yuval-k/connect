@@ -27,7 +27,7 @@ const RISER_EVENT: &str = "reiser";
 const UNRISER_EVENT: &str = "unreiser";
 
 const EXPLODE_EVENT: &str = "explode";
-
+const NUM_RISERS : usize = 4;
 
 bitflags! {
     flags SoundState: u32 {
@@ -89,6 +89,7 @@ impl OSCManager {
             events.push(OSCEvent::UnTouch(i));
         }
         if to_remove.contains(HighTouch) {
+            events.push(OSCEvent::Explosion);
             events.push(OSCEvent::UnHiTouch(i));
         }
         if to_remove.contains(Riser) {
@@ -128,11 +129,11 @@ impl OSCManager {
         // 2 poles in a chain.. we can notified twice for each
         let risers = self.risers >> 1;
 
-        if risers == 0 {
+        if risers <= 0 {
             return None;
         }
         // no more than 5
-        if risers > 5 {
+        if risers > NUM_RISERS {
             return None;
         }
 
@@ -146,12 +147,12 @@ impl OSCManager {
         let risers = self.risers >> 1;
 
 
-        if risers == 0 {
+        if risers <= 0 {
             return None;
         }
         self.risers -= 1;
         // no more than 5
-        if risers > 5 {
+        if risers > NUM_RISERS {
             return None;
         }
 

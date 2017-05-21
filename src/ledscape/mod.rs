@@ -6,8 +6,8 @@ use super::pixels;
 
 pub const LEDSCAPE_NUM_STRIPS: usize = 48;
 
-static pru0_program: &'static [u8] = include_bytes!("../lib/bin/ws281x-rgb-123-v3-pru0.bin");
-static pru1_program: &'static [u8] = include_bytes!("../lib/bin/ws281x-rgb-123-v3-pru1.bin");
+static pru0_program: &'static [u8] = include_bytes!("../../lib/bin/ws281x-rgb-123-v3-pru0.bin");
+static pru1_program: &'static [u8] = include_bytes!("../../lib/bin/ws281x-rgb-123-v3-pru1.bin");
 
 #[repr(C, packed)]
 struct ledscape_pixel_t {
@@ -161,7 +161,7 @@ impl LedscapeLedArray {
     }
 }
 
-impl anim::LedArray for LedscapeLedArray {
+impl pixels::LedArray for LedscapeLedArray {
     fn len(&self) -> usize {
         self.strip_size * LEDSCAPE_NUM_STRIPS
     }

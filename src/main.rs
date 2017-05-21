@@ -197,8 +197,8 @@ fn main() {
 
     let (tx, rx) = mpsc::channel();
 
-    // 30 fps
-    let fps_duration = std::time::Duration::from_secs(1) / 30;
+    // 20 fps
+    let fps_duration = std::time::Duration::from_secs(1) / 20;
     let newtx = tx.clone();
     std::thread::spawn(move || {
         let tx = newtx;

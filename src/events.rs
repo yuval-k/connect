@@ -212,11 +212,10 @@ impl SerialEventSource {
             events[*ind][senderindex] = true;
         }
     }
+
     fn send_events(sender: &mut std::sync::mpsc::Sender<Events>,
                    pastevents: &[[bool; NUM_POLES]; NUM_POLES],
                    events: &[[bool; NUM_POLES]; NUM_POLES]) {
-
-
         for i in 0..NUM_POLES {
             for j in i..NUM_POLES {
                 if events[i][j] != pastevents[i][j] {

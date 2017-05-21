@@ -2,7 +2,7 @@ use std;
 use libc;
 
 use std::io::Write;
-use super::anim;
+use super::pixels;
 
 pub const LEDSCAPE_NUM_STRIPS: usize = 48;
 

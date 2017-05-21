@@ -73,15 +73,16 @@ impl OSCManager {
             Some(super::PoleAnimations::Connecting) => {
                 desired_state = Riser | Touch; /* send off to rise event. potentially to touch event as well if new state is none?! */
             }
-            Some(super::PoleAnimations::Exoloding) => {
+            Some(super::PoleAnimations::Exploding) => {
                 desired_state = HighTouch;
             }
         }
 
         let to_add = desired_state - current_sound_state;
         let to_remove = current_sound_state - desired_state;
-        let is_exploding = (old_state != Some(super::PoleAnimations::Exoloding)) &&
-                           (current_state == Some(super::PoleAnimations::Exoloding));
+        // TODO: defined is_exploding better!
+        let is_exploding = (old_state != Some(super::PoleAnimations::Exploding)) &&
+                           (current_state == Some(super::PoleAnimations::Exploding));
 
         let mut events: Vec<OSCEvent> = vec![];
         // remove old state
@@ -89,7 +90,6 @@ impl OSCManager {
             events.push(OSCEvent::UnTouch(i));
         }
         if to_remove.contains(HighTouch) {
-            events.push(OSCEvent::Explosion);
             events.push(OSCEvent::UnHiTouch(i));
         }
         if to_remove.contains(Riser) {

@@ -44,7 +44,7 @@ impl OPCLedArray {
     }
 }
 
-impl super::anim::LedArray for OPCLedArray {
+impl super::pixels::LedArray for OPCLedArray {
     fn len(&self) -> usize {
         self.pixels.iter().len()
     }

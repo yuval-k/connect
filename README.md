@@ -48,13 +48,19 @@ sudo cat /sys/devices/platform/bone_capemgr/slots
 
 
 # upgrade to latest jessie with latest kernel
-/opt/tools/scripts/upgrade_kernel
+cd /opt/scripts/tools/
+git pull
+sudo ./update_kernel.sh
+sudo reboot
 
 # load module
 (see: http://elinux.org/EBC_Exercise_30_PRU_via_remoteproc_and_RPMsg)
 #enable uio in
 cd /opt/source/dtb-4.4-ti
 
+bash dtc-overlay.sh
+
+then:
 edit:  src/arm/am335x-boneblack-wireless-emmc-overlay.dts
 make sure that /boot/uEnv.txt has dtb set to m335x-boneblack-wireless-emmc-overlay.dtb:
 dtb=am335x-boneblack-wireless-emmc-overlay.dtb

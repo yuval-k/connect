@@ -14,6 +14,23 @@ pub trait LedArray {
     fn set_color_rgba(&mut self, lednum: usize, r: u8, g: u8, b: u8, a: u8);
     fn show(&mut self) -> std::io::Result<()>;
 }
+
+pub struct PixelArray<T:LedArray> {
+    l : T,
+}
+
+impl<T:LedArray> PixelArray<T> {
+
+pub fn set_color<U: Float, C: IntoColor<U>>(&mut self, lednum: usize, color: C) {
+    let rgb = color.into_rgb();
+    let (r, g, b, a): (u8, u8, u8, u8) = rgb.to_pixel();
+    self.l.set_color_rgba(lednum, r, g, b, a);
+}
+
+
+}
+
+
 #[derive(Copy,Clone,Debug)]
 pub enum RgbOrder {
     Rgb,
@@ -91,12 +108,4 @@ pub fn set_color<U: Float, T: IntoColor<U>>(l: &mut LedArray, lednum: usize, col
     let rgb = color.into_rgb();
     let (r, g, b, a): (u8, u8, u8, u8) = rgb.to_pixel();
     l.set_color_rgba(lednum, r, g, b, a);
-}
-
-pub trait Animation {
-    fn update_animation(&mut self, delta: std::time::Duration);
-}
-
-pub trait Drawer {
-    fn draw(&self, array: &mut LedArray);
 }

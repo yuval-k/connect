@@ -173,11 +173,11 @@ impl Animator {
 
             // do this every frame.
             if let super::PoleState::ConnectedTo(ref others) = new_state {
-                let was_exploding = poles[i].anim == Some(super::PoleAnimations::Exoloding);
+                let was_exploding = poles[i].anim == Some(super::PoleAnimations::Exploding);
                 let is_exploding = poles[i].level == 1. &&
                                    others.iter().any(|i| poles[i].level == 1.);
                 if is_exploding {
-                    new_anim = Some(super::PoleAnimations::Exoloding);
+                    new_anim = Some(super::PoleAnimations::Exploding);
                 }
                 if was_exploding != is_exploding {
                     // TODO: send midi signal should_send = true;
@@ -203,6 +203,7 @@ impl Animator {
 
             // animate pole
             let old_level = pole.level;
+            let old_touch_level = pole.touch_level;
             match pole.anim {
                 Some(super::PoleAnimations::Touching) => {
                     self::touch::TouchAnim::animate_pole(pole, delta);
@@ -210,7 +211,7 @@ impl Animator {
                 Some(super::PoleAnimations::Connecting) => {
                     self::touch::ConnectedAnim::animate_pole(pole, delta);
                 }
-                Some(super::PoleAnimations::Exoloding) => {
+                Some(super::PoleAnimations::Exploding) => {
                     self::touch::ExplodingAnim::animate_pole(pole, delta);
                 }
                 None => {
@@ -333,4 +334,12 @@ impl Animator {
         }
   */
     }
+}
+
+pub trait Animation {
+    fn update_animation(&mut self, delta: std::time::Duration);
+}
+
+pub trait Drawer {
+    fn draw(&self, array: &mut super::pixels::LedArray);
 }

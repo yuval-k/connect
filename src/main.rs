@@ -19,7 +19,7 @@ use std::sync::mpsc;
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 mod ledscape;
 
-mod anim;
+mod pixels;
 mod animations;
 mod opc;
 mod osc;
@@ -40,15 +40,15 @@ extern crate serde_derive;
 #[cfg(feature = "gui")]
 mod gui;
 #[cfg(feature = "gui")]
-fn create_gui() -> Option<Box<anim::LedArray>> {
+fn create_gui() -> Option<Box<pixels::LedArray>> {
     gui::create_gui()
 }
 #[cfg(not(feature = "gui"))]
-fn create_gui() -> Option<Box<anim::LedArray>>{
+fn create_gui() -> Option<Box<pixels::LedArray>>{
     None
 }
 
-use anim::Drawer;
+use animations::Drawer;
 
 #[derive(Clone,Copy,Debug)]
 pub enum EventTypes {
@@ -67,14 +67,14 @@ const LEDS_PER_STRING: usize = 100;
 const NUM_POLES: usize = 20;
 
 struct PoleLedArrayAdapter<'a> {
-    ls: &'a mut anim::LedArray,
+    ls: &'a mut pixels::LedArray,
     pole_offset: usize,
     size: usize,
 }
 
 
 impl<'a> PoleLedArrayAdapter<'a> {
-    fn new(ls: &'a mut anim::LedArray, pole_strip_size: usize, pole_strip_index: usize) -> Self {
+    fn new(ls: &'a mut pixels::LedArray, pole_strip_size: usize, pole_strip_index: usize) -> Self {
         PoleLedArrayAdapter {
             ls: ls,
             pole_offset: pole_strip_size * pole_strip_index,
@@ -83,7 +83,7 @@ impl<'a> PoleLedArrayAdapter<'a> {
     }
 }
 
-impl<'a> anim::LedArray for PoleLedArrayAdapter<'a> {
+impl<'a> pixels::LedArray for PoleLedArrayAdapter<'a> {
     fn len(&self) -> usize {
         self.size
     }
@@ -100,8 +100,8 @@ impl<'a> anim::LedArray for PoleLedArrayAdapter<'a> {
 
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-fn get_led_array() -> Box<anim::LedArray> {
-    use anim::LedArray;
+fn get_led_array() -> Box<pixels::LedArray> {
+    use pixels::LedArray;
     let mut l = ledscape::LedscapeLedArray::new(LEDS_PER_STRING);
     for i in 0..l.len() {
         l.set_color_rgba(i, 255, 0, 0, 255);
@@ -122,7 +122,7 @@ fn get_led_array() -> Box<anim::LedArray> {
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn get_led_array() -> Box<anim::LedArray> {
+fn get_led_array() -> Box<pixels::LedArray> {
     match create_gui(){
         Some(l)=>l,
         None =>    Box::new(get_opc_array("127.0.0.1:7890").expect("can't connect"))
@@ -174,20 +174,20 @@ fn main() {
         .map(|s| s.to_string())
         .unwrap_or(std::env::var("OPC_SERVER").unwrap_or(String::new()));
     let rgb = matches.value_of("rgb")
-        .map(|s| anim::RgbOrder::new(s).expect("Invalid rgb value!"))
-        .unwrap_or(anim::RgbOrder::Rgb);
+        .map(|s| pixels::RgbOrder::new(s).expect("Invalid rgb value!"))
+        .unwrap_or(pixels::RgbOrder::Rgb);
 
 
     env_logger::init().unwrap();
 
     info!("hello");
-    let ledscapecontroller: Box<anim::LedArray> = if opc_server.is_empty() {
+    let ledscapecontroller: Box<pixels::LedArray> = if opc_server.is_empty() {
         get_led_array()
     } else {
         Box::new(get_opc_array(&opc_server).expect("can't connect"))
     };
 
-    let mut ledscapecontroller = Box::new(anim::RgbLedArray::new(ledscapecontroller, rgb));
+    let mut ledscapecontroller = Box::new(pixels::RgbLedArray::new(ledscapecontroller, rgb));
 
     // TODO add OPCCLient
 
@@ -344,7 +344,7 @@ pub enum PoleState {
 pub enum PoleAnimations {
     Touching,
     Connecting,
-    Exoloding,
+    Exploding,
 }
 
 #[derive(Clone,Debug)]
@@ -377,7 +377,7 @@ impl Pole {
     }
 }
 
-fn draw_poles_to_array(c: &mut anim::LedArray, poles: &[Pole]) {
+fn draw_poles_to_array(c: &mut pixels::LedArray, poles: &[Pole]) {
     for (i, pole) in poles.iter().enumerate() {
         // with ledscape, anim array  is a big array. each LEDS_PER_STRING are one pole.
         let mut adaper = PoleLedArrayAdapter::new(c, LEDS_PER_STRING, i);
@@ -388,16 +388,16 @@ fn draw_poles_to_array(c: &mut anim::LedArray, poles: &[Pole]) {
     }
 }
 
-impl anim::Drawer for Pole {
-    fn draw(&self, array: &mut anim::LedArray) {
+impl animations::Drawer for Pole {
+    fn draw(&self, array: &mut pixels::LedArray) {
         // ?!
         for i in 0..array.len() {
-            anim::set_color(array, i, self.leds[i]);
+            pixels::set_color(array, i, self.leds[i]);
         }
     }
 }
 
-impl anim::Animation for Pole {
+impl animations::Animation for Pole {
     fn update_animation(&mut self, delta: std::time::Duration) {
         // ?!
         let size = self.leds.len() as f32;

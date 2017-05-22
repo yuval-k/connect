@@ -63,6 +63,7 @@ pub enum Events {
     Reset,
     Draw,
     ConfigChanged,
+    Disco(bool),
 }
 
 /// touch goes up to cp1 and twinkels / breathes like the heart, the hight it is the higher the lum.
@@ -318,7 +319,7 @@ fn work<F>(config: config::Config,
 
 
     let black = palette::Hsl::new(palette::RgbHue::from_radians(0.), 0., 0.);
-
+    let mut discomode = false;
     let mut last_anim_time = std::time::Instant::now();
     for event in receiver.into_iter() {
         match event {
@@ -341,8 +342,11 @@ fn work<F>(config: config::Config,
                         *pixel = black;
                     }
                 }
-                animator.animate_poles(&mut poles, &touches, now - last_anim_time);
+                if ! discomode{
+                    animator.animate_poles(&mut poles, &touches, now - last_anim_time);
+                }
                 draw_poles(&mut poles);
+
                 last_anim_time = now;
             }
             Events::ConfigChanged => {
@@ -352,6 +356,9 @@ fn work<F>(config: config::Config,
                     p.set_pole_length(polen);
                 }
             }
+            Events::Disco(enabled) => {
+                discomode = enabled;
+            }            
         }
     }
 }

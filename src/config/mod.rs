@@ -97,8 +97,34 @@ impl Config {
 
                 sender.send(Events::ConfigChanged);
             }
-            _  => {
 
+            ("/disco", Some(ref args) ) if args.len() == 1 => {
+                let arg = &args[0];
+               let enabled = match *arg {
+                    rosc::OscType::Int(num) => {
+                        if num > 0 {
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    rosc::OscType::Float(num) => {
+                        if num > 0.0 {
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    _ => {
+                        warn!("got unexpect message {:?}", *arg);
+                        return;
+                    }
+                };
+
+                sender.send(Events::Disco(enabled));
+            }
+            _  => {
+                
             }
         }
     }

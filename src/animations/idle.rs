@@ -73,11 +73,11 @@ impl super::PoleAnimation for CircleAnim {
     fn animate_poles(&self, poles: &mut [super::super::Pole]) {
 
         for p in poles {
-            let len = p.leds.len();
+            let len = p.leds().len();
 
             let circl_index: usize = (self.phase.current() * len as f32) as usize;
 
-            for (i, pixel) in p.leds.iter_mut().enumerate() {
+            for (i, pixel) in p.leds().iter_mut().enumerate() {
 
                 if (i + 1) == circl_index {
                     *pixel = self.color;
@@ -124,7 +124,7 @@ impl IdleAnim {
 
         for p in poles.iter_mut() {
             // darkness
-            for pixel in p.leds.iter_mut() {
+            for pixel in p.leds().iter_mut() {
                 *pixel = color_background;
             }
         }

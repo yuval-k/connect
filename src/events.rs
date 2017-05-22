@@ -181,7 +181,12 @@ impl SerialEventSource {
                         let lastheardof = std::time::Duration::from_millis(v[0] as u64);
                         let senderindex = v[1];
                         let touching = &v[2..];
-// TODO: add timeout
+                        // TODO: add timeout
+                        let secs = lastheardof.as_secs();
+                        if (secs < 10) && (secs > 0) {
+                            warn!("Pole has a long timeout {} {:?}", senderindex, lastheardof);
+                        }
+
                         Self::set_events(&mut events[currentindex], senderindex, touching);
 
                         if senderindex == (NUM_POLES - 1) {

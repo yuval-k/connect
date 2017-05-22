@@ -4,6 +4,7 @@ use bit_set;
 
 
 use std::ops::Rem;
+use super::config;
 
 pub mod idle;
 pub mod touch;
@@ -78,18 +79,14 @@ impl Animator {
     }
 
     pub fn animate_poles(&mut self,
+                         config: &config::Config,
                          poles: &mut [super::Pole],
                          touches: &super::TouchMap,
                          delta: std::time::Duration) {
         use animations::touch::SinglePoleAnimation;
-
-        let black = palette::Hsl::new(palette::RgbHue::from_radians(0.), 0., 0.);
-
-        // darkness
+        let polen = config.get_num_leds_for_pole();
         for p in poles.iter_mut() {
-            for pixel in p.leds.iter_mut() {
-                *pixel = black;
-            }
+            p.set_pole_length(polen);
         }
 
         // update sprites
@@ -233,23 +230,24 @@ impl Animator {
             }
 
             // draw pole animation
+            let ledslen = pole.leds().len();
             if pole.level > 0. {
-                let len = pole.leds.len();
-
-                let circl_index: usize = (pole.level * len as f32) as usize;
-
-                for pixel in pole.leds.iter_mut().rev().take(circl_index) {
-                    *pixel = pole.base_color;
+                let circl_index: usize = (pole.level * ledslen as f32) as usize;
+                let color = pole.base_color;
+                for pixel in pole.leds().iter_mut().rev().take(circl_index) {
+                    *pixel = color;
                 }
             }
             if pole.touch_level > 0. {
-                let len = pole.leds.len();
-                let circl_index: usize = (pole.touch_level * len as f32) as usize;
+                let circl_index: usize = (pole.touch_level * ledslen as f32) as usize;
+                let color = pole.current_color;
 
-                for pixel in pole.leds.iter_mut().take(circl_index) {
-                    *pixel = pole.current_color;
+                for pixel in pole.leds().iter_mut().take(circl_index) {
+                    *pixel = color;
                 }
             }
+            // TODO: draw heart animation
+
         }
 
 

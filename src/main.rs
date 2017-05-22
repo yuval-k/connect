@@ -24,6 +24,7 @@ mod animations;
 mod opc;
 mod osc;
 mod events;
+mod config;
 
 #[cfg(feature = "gui")]
 extern crate kiss3d;
@@ -44,7 +45,7 @@ fn create_gui() -> Option<Box<pixels::LedArray>> {
     gui::create_gui()
 }
 #[cfg(not(feature = "gui"))]
-fn create_gui() -> Option<Box<pixels::LedArray>>{
+fn create_gui() -> Option<Box<pixels::LedArray>> {
     None
 }
 
@@ -62,6 +63,8 @@ pub enum Events {
     Reset,
     Draw,
 }
+
+/// touch goes up to cp1 and twinkels / breathes like the heart, the hight it is the higher the lum.
 
 const LEDS_PER_STRING: usize = 100;
 const NUM_POLES: usize = 20;
@@ -123,9 +126,9 @@ fn get_led_array() -> Box<pixels::LedArray> {
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn get_led_array() -> Box<pixels::LedArray> {
-    match create_gui(){
-        Some(l)=>l,
-        None =>    Box::new(get_opc_array("127.0.0.1:7890").expect("can't connect"))
+    match create_gui() {
+        Some(l) => l,
+        None => Box::new(get_opc_array("127.0.0.1:7890").expect("can't connect")),
     }
 }
 
@@ -191,9 +194,10 @@ fn main() {
 
     // TODO add OPCCLient
 
-    let poles : Vec<Pole> = (0..NUM_POLES).
-    map(|x| 2_f32*std::f32::consts::PI*(x as f32) / (NUM_POLES as  f32)).
-    map(|x| Pole::new(x)).collect();
+    let poles: Vec<Pole> = (0..NUM_POLES)
+        .map(|x| 2_f32 * std::f32::consts::PI * (x as f32) / (NUM_POLES as f32))
+        .map(|x| Pole::new(x))
+        .collect();
 
     let (tx, rx) = mpsc::channel();
 
@@ -220,8 +224,10 @@ fn main() {
     });
 
     let animator = animations::Animator::new(osc::OSCManager::new(&osc_server));
+    let config = config::Config::new();
 
-    work(move |poles| draw_poles_to_array(ledscapecontroller.as_mut(), poles),
+    work(config,
+         move |poles| draw_poles_to_array(ledscapecontroller.as_mut(), poles),
          poles,
          timeout,
          animator,
@@ -298,7 +304,8 @@ impl TouchMap {
     }
 }
 
-fn work<F>(mut draw_poles: F,
+fn work<F>(config: config::Config,
+           mut draw_poles: F,
            mut poles: Vec<Pole>,
            timeout: std::time::Duration,
            mut animator: animations::Animator,
@@ -307,6 +314,9 @@ fn work<F>(mut draw_poles: F,
 {
 
     let mut touches = TouchMap::new(timeout);
+
+
+    let black = palette::Hsl::new(palette::RgbHue::from_radians(0.), 0., 0.);
 
     let mut last_anim_time = std::time::Instant::now();
     for event in receiver.into_iter() {
@@ -323,7 +333,14 @@ fn work<F>(mut draw_poles: F,
             Events::Draw => {
                 touches.clean_timeout();
                 let now = std::time::Instant::now();
-                animator.animate_poles(&mut poles, &touches, now - last_anim_time);
+
+                // darkness
+                for p in poles.iter_mut() {
+                    for pixel in p.internal_leds.iter_mut() {
+                        *pixel = black;
+                    }
+                }
+                animator.animate_poles(&config, &mut poles, &touches, now - last_anim_time);
                 draw_poles(&mut poles);
                 last_anim_time = now;
             }
@@ -353,18 +370,31 @@ pub struct Pole {
     pub touch_level: f32,
     pub base_color: palette::Hsl,
     pub current_color: palette::Hsl,
-    pub leds: Vec<palette::Hsl>,
-
+    internal_leds: Vec<palette::Hsl>,
+    
     pub state: PoleState,
     pub anim: Option<PoleAnimations>,
+
+    pole_length : usize,
 }
 
 impl Pole {
-    fn new(rads : f32) -> Self {
+    pub fn leds(&mut self) -> &mut [palette::Hsl]{
+        &mut self.internal_leds[..self.pole_length]
+    }
+    pub fn leds_ref(& self) -> & [palette::Hsl]{
+        & self.internal_leds[..self.pole_length]
+    }
+
+    pub fn set_pole_length(&mut self, newl : usize) {
+        self.pole_length = std::cmp::min(self.internal_leds.len(), newl);
+    }
+
+    fn new(rads: f32) -> Self {
         Pole {
             level: 0.,
             touch_level: 0.,
-            leds:
+            internal_leds:
                 vec![palette::Hsl::new(palette::RgbHue::from_radians(0.),1.,0.5); LEDS_PER_STRING],
             //            pole_state : PoleState::Untouched,
             base_color: palette::Hsl::new(palette::RgbHue::from_radians(rads), 1., 0.5),
@@ -373,6 +403,7 @@ impl Pole {
 
             anim: None,
             state: PoleState::NotTouched,
+            pole_length : LEDS_PER_STRING,
         }
     }
 }
@@ -391,8 +422,8 @@ fn draw_poles_to_array(c: &mut pixels::LedArray, poles: &[Pole]) {
 impl animations::Drawer for Pole {
     fn draw(&self, array: &mut pixels::LedArray) {
         // ?!
-        for i in 0..array.len() {
-            pixels::set_color(array, i, self.leds[i]);
+        for (i,c) in (0..array.len()).zip(self.internal_leds.iter()) {
+            pixels::set_color(array, i, *c);
         }
     }
 }
@@ -400,8 +431,8 @@ impl animations::Drawer for Pole {
 impl animations::Animation for Pole {
     fn update_animation(&mut self, delta: std::time::Duration) {
         // ?!
-        let size = self.leds.len() as f32;
-        for (i, pixel) in self.leds.iter_mut().enumerate() {
+        let size = self.leds().len() as f32;
+        for (i, pixel) in self.leds().iter_mut().enumerate() {
             let newhue: f32 = pixel.hue.to_radians() + delta.as_secs() as f32 +
                               delta.subsec_nanos() as f32 / 1_000_000_000.0;
             pixel.hue = palette::RgbHue::from_radians(newhue);

@@ -15,19 +15,16 @@ pub trait LedArray {
     fn show(&mut self) -> std::io::Result<()>;
 }
 
-pub struct PixelArray<T:LedArray> {
-    l : T,
+pub struct PixelArray<T: LedArray> {
+    l: T,
 }
 
-impl<T:LedArray> PixelArray<T> {
-
-pub fn set_color<U: Float, C: IntoColor<U>>(&mut self, lednum: usize, color: C) {
-    let rgb = color.into_rgb();
-    let (r, g, b, a): (u8, u8, u8, u8) = rgb.to_pixel();
-    self.l.set_color_rgba(lednum, r, g, b, a);
-}
-
-
+impl<T: LedArray> PixelArray<T> {
+    pub fn set_color<U: Float, C: IntoColor<U>>(&mut self, lednum: usize, color: C) {
+        let rgb = color.into_rgb();
+        let (r, g, b, a): (u8, u8, u8, u8) = rgb.to_pixel();
+        self.l.set_color_rgba(lednum, r, g, b, a);
+    }
 }
 
 

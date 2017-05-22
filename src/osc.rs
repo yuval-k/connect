@@ -27,7 +27,7 @@ const RISER_EVENT: &str = "reiser";
 const UNRISER_EVENT: &str = "unreiser";
 
 const EXPLODE_EVENT: &str = "explode";
-const NUM_RISERS : usize = 4;
+const NUM_RISERS: usize = 4;
 
 bitflags! {
     flags SoundState: u32 {

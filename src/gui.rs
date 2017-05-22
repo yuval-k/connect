@@ -10,33 +10,32 @@ use kiss3d::scene::SceneNode;
 
 #[derive(Copy,Clone,Debug, Deserialize)]
 struct Point {
-    point : [f32;3]
+    point: [f32; 3],
 }
 
 #[derive(Copy,Clone,Debug)]
-struct Pixel{
-    r: u8, 
-    g: u8, 
-    b: u8, 
+struct Pixel {
+    r: u8,
+    g: u8,
+    b: u8,
 }
 struct GuiLedArray {
-    pixels : Vec<Pixel>,
-    tx: std::sync::mpsc::Sender<Vec<Pixel>>
+    pixels: Vec<Pixel>,
+    tx: std::sync::mpsc::Sender<Vec<Pixel>>,
 }
 
-impl GuiLedArray{
-    fn new(size : usize,  tx: std::sync::mpsc::Sender<Vec<Pixel>>) ->Self {
-        let p = Pixel{r:0,g:0,b:0};
-GuiLedArray{
-    pixels : vec![p; size],
-    tx:tx,
-}
+impl GuiLedArray {
+    fn new(size: usize, tx: std::sync::mpsc::Sender<Vec<Pixel>>) -> Self {
+        let p = Pixel { r: 0, g: 0, b: 0 };
+        GuiLedArray {
+            pixels: vec![p; size],
+            tx: tx,
+        }
     }
 }
 
 
-impl anim::LedArray for GuiLedArray{
-
+impl anim::LedArray for GuiLedArray {
     fn len(&self) -> usize {
         self.pixels.len()
     }
@@ -52,17 +51,18 @@ impl anim::LedArray for GuiLedArray{
     }
 }
 
-fn start_ui(rx : std::sync::mpsc::Receiver<Vec<Pixel>>) {
+fn start_ui(rx: std::sync::mpsc::Receiver<Vec<Pixel>>) {
 
     let file = std::fs::File::open(std::env::var("LAYOUT").unwrap()).unwrap();
     let pts: Vec<Point> = serde_json::from_reader(file).unwrap();
 
     let mut window = Window::new("Kiss3d: cube");
-    let mut cubes : Vec<SceneNode> = vec![];
+    let mut cubes: Vec<SceneNode> = vec![];
     for p in pts {
-        let mut cube = window.add_cube(0.03,0.03,0.03);
+        let mut cube = window.add_cube(0.03, 0.03, 0.03);
         cube.set_color(0.0, 0.0, 0.0);
-        let translate : nalgebra::Translation3<f32> = nalgebra::Translation3::new(p.point[0],p.point[1],p.point[2]);
+        let translate: nalgebra::Translation3<f32> =
+            nalgebra::Translation3::new(p.point[0], p.point[1], p.point[2]);
         cube.set_local_translation(translate);
         cubes.push(cube);
     }
@@ -74,7 +74,9 @@ fn start_ui(rx : std::sync::mpsc::Receiver<Vec<Pixel>>) {
     while window.render() {
         if let Ok(v) = rx.try_recv() {
             for (pixel, cube) in v.iter().zip(cubes.iter_mut()) {
-                cube.set_color(pixel.r as f32 /255.0, pixel.g as f32 /255.0, pixel.b as f32 /255.0);
+                cube.set_color(pixel.r as f32 / 255.0,
+                               pixel.g as f32 / 255.0,
+                               pixel.b as f32 / 255.0);
 
             }
         }
@@ -82,8 +84,7 @@ fn start_ui(rx : std::sync::mpsc::Receiver<Vec<Pixel>>) {
 }
 
 pub fn create_gui() -> Option<Box<anim::LedArray>> {
-    let (rx,tx) = std::sync::mpsc::channel();
-    std::thread::spawn(||start_ui(tx));
-    Some(Box::new(GuiLedArray::new(super::NUM_POLES*super::LEDS_PER_STRING, rx)))
+    let (rx, tx) = std::sync::mpsc::channel();
+    std::thread::spawn(|| start_ui(tx));
+    Some(Box::new(GuiLedArray::new(super::NUM_POLES * super::LEDS_PER_STRING, rx)))
 }
-

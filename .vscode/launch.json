@@ -6,12 +6,14 @@
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceRoot}/target/debug/connect",
-            "args": [],
+            "args": ["-d", "stdin", "-p", "localhost:7890"],
             "cwd": "${workspaceRoot}",
-                        "sourceMap": {
-                "/buildslave/rust-buildbot/slave/stable-dist-rustc-linux/build/src/": "/home/yuval/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/src/"
+            "sourceMap": {
+                "/checkout/src/": "/home/yuval/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/src/"
             },
             "terminal": "integrated",
+            "env": {"RUST_LOG" : "debug",
+            "RUST_BACKTRACE":"1"},
             "preLaunchTask": "build",
             "sourceLanguages": ["rust"]
         }

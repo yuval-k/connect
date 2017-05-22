@@ -2,6 +2,7 @@ use std;
 use std::net::UdpSocket;
 use rosc;
 
+use super::Events;
 
 struct ConfigData {
     num_leds_for_pole: usize,
@@ -18,10 +19,10 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new() -> Self {
+    pub fn new(sender: std::sync::mpsc::Sender<Events>) -> Self {
         let configdata = std::sync::Arc::new(std::sync::RwLock::new(ConfigData::new()));
         let s = Config { data: configdata.clone() };
-        std::thread::spawn(move || Self::start_config_server(configdata));
+        std::thread::spawn(move || Self::start_config_server(sender, configdata));
         s
     }
 
@@ -31,7 +32,7 @@ impl Config {
         numret
     }
 
-    fn start_config_server(mut data: std::sync::Arc<std::sync::RwLock<ConfigData>>) {
+    fn start_config_server(sender: std::sync::mpsc::Sender<Events>, mut data: std::sync::Arc<std::sync::RwLock<ConfigData>>) {
         let mut socket = UdpSocket::bind("0.0.0.0:8134").expect("this must work");
         info!("osc config server up");
         let mut buf = [0; 4096];
@@ -52,27 +53,27 @@ impl Config {
             let msg = res.unwrap();
 
             debug!("got osc packet {:?}", &msg);
-            Self::process(&mut data, msg);
+            Self::process(&mut data, &sender, msg);
         }
 
     }
 
 
-    fn process(data: &mut std::sync::Arc<std::sync::RwLock<ConfigData>>,p : rosc::OscPacket ) {
+    fn process(data: &mut std::sync::Arc<std::sync::RwLock<ConfigData>>, sender: &std::sync::mpsc::Sender<Events>, p : rosc::OscPacket ) {
         match p {
             rosc::OscPacket::Message(m) => {
-                Self::process_message(data, m);
+                Self::process_message(data, sender, m);
             }
             rosc::OscPacket::Bundle(b) => {
                 // we ignore time tag. sorry.
                 for inner in b.content {
-                    Self::process(data, inner);
+                    Self::process(data, sender, inner);
                 }
             }
         }
     }
 
-    fn process_message(data: &mut std::sync::Arc<std::sync::RwLock<ConfigData>>, m : rosc::OscMessage) {
+    fn process_message(data: &mut std::sync::Arc<std::sync::RwLock<ConfigData>>,  sender: &std::sync::mpsc::Sender<Events>, m : rosc::OscMessage) {
 
         match (m.addr.as_ref(), m.args) {
             ("/pole_leds", Some(ref args) ) if args.len() == 1 => {
@@ -90,8 +91,11 @@ impl Config {
                     }
                     _ => {
                         warn!("got unexpect message {:?}", *arg);
+                        return;
                     }
                 }
+
+                sender.send(Events::ConfigChanged);
             }
             _  => {
 

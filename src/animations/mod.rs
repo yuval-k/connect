@@ -4,7 +4,6 @@ use bit_set;
 
 
 use std::ops::Rem;
-use super::config;
 
 pub mod idle;
 pub mod touch;
@@ -79,15 +78,11 @@ impl Animator {
     }
 
     pub fn animate_poles(&mut self,
-                         config: &config::Config,
                          poles: &mut [super::Pole],
                          touches: &super::TouchMap,
                          delta: std::time::Duration) {
         use animations::touch::SinglePoleAnimation;
-        let polen = config.get_num_leds_for_pole();
-        for p in poles.iter_mut() {
-            p.set_pole_length(polen);
-        }
+
 
         // update sprites
         for sprite in self.sprites.iter_mut().chain(self.backgroundsprites.iter_mut()) {

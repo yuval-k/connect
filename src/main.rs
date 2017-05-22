@@ -62,6 +62,7 @@ pub enum Events {
     Stop(EventTypes),
     Reset,
     Draw,
+    ConfigChanged,
 }
 
 /// touch goes up to cp1 and twinkels / breathes like the heart, the hight it is the higher the lum.
@@ -224,7 +225,7 @@ fn main() {
     });
 
     let animator = animations::Animator::new(osc::OSCManager::new(&osc_server));
-    let config = config::Config::new();
+    let config = config::Config::new(tx.clone());
 
     work(config,
          move |poles| draw_poles_to_array(ledscapecontroller.as_mut(), poles),
@@ -340,9 +341,16 @@ fn work<F>(config: config::Config,
                         *pixel = black;
                     }
                 }
-                animator.animate_poles(&config, &mut poles, &touches, now - last_anim_time);
+                animator.animate_poles(&mut poles, &touches, now - last_anim_time);
                 draw_poles(&mut poles);
                 last_anim_time = now;
+            }
+            Events::ConfigChanged => {
+
+                let polen = config.get_num_leds_for_pole();
+                for p in poles.iter_mut() {
+                    p.set_pole_length(polen);
+                }
             }
         }
     }
@@ -382,14 +390,10 @@ impl Pole {
     pub fn leds(&mut self) -> &mut [palette::Hsl]{
         &mut self.internal_leds[..self.pole_length]
     }
-    pub fn leds_ref(& self) -> & [palette::Hsl]{
-        & self.internal_leds[..self.pole_length]
-    }
-
+    
     pub fn set_pole_length(&mut self, newl : usize) {
         self.pole_length = std::cmp::min(self.internal_leds.len(), newl);
     }
-
     fn new(rads: f32) -> Self {
         Pole {
             level: 0.,

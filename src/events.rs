@@ -133,7 +133,9 @@ impl SerialEventSource {
             return Err(Error::new(ErrorKind::NotFound, "no serial device found"));
         }
 
-        let mut port = serial::open(&self.devicefile)?;
+        info!("Found serial device {}", devicefile);
+
+        let mut port = serial::open(&devicefile)?;
         port.reconfigure(&|settings| {
                 settings.set_baud_rate(serial::Baud115200)?;
                 settings.set_char_size(serial::Bits8);

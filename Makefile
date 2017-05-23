@@ -9,5 +9,8 @@ cross-build:
 build:
 	cargo build
 
-target/layout.json: contrib/make_connect_layout.py
-	python contrib/make_connect_layout.py > target/layout.json
+#target/layout.json: contrib/make_connect_layout.py
+#	python contrib/make_connect_layout.py > target/layout.json
+
+target/layout.json: contrib/Pixel_Coordinates.xlsx contrib/xlsx_layout.py
+	python contrib/xlsx_layout.py contrib/Pixel_Coordinates.xlsx  > target/layout.json

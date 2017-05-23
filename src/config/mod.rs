@@ -14,7 +14,7 @@ impl ConfigData {
     fn new() -> Self {
         ConfigData {
             num_leds_for_pole: 54,
-            cp1: 21,
+            cp1: 20,
             cp2: 34,
         }
     }

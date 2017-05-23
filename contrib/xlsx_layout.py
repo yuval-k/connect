@@ -4,7 +4,7 @@ from openpyxl.utils import get_column_letter
 import sys
 
 wb = load_workbook(filename=sys.argv[1], data_only=True)
-sheet = wb["20"]
+sheet = wb["20Ex"]
 
 strips = []
 for pair in range(10):

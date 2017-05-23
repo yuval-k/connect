@@ -18,12 +18,23 @@ impl Eventer for StdinEventSource {
     fn get_events(&mut self, mut sender: std::sync::mpsc::Sender<Events>) {
         let stdin = std::io::stdin();
         let mut handle = stdin.lock();
+        let disco = false;
         loop {
 
             let mut buffer = String::new();
             handle.read_line(&mut buffer).expect("can't read");
 
+            let buffer = buffer.trim();
+
+            if buffer == "disco" {
+                disco = !disco;
+                sender.send(Events::Disco(disco));
+                continue;
+
+            }
+
             let mut words: Vec<&str> = buffer.split_whitespace().collect();
+
 
             if (words.len() != 2) && (words.len() != 3) {
                 println!("invalid input - exactly two or three!");

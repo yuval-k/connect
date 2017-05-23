@@ -22,6 +22,10 @@ impl Config {
     pub fn new(sender: std::sync::mpsc::Sender<Events>) -> Self {
         let configdata = std::sync::Arc::new(std::sync::RwLock::new(ConfigData::new()));
         let s = Config { data: configdata.clone() };
+
+        // generate config change event for the initial config
+        sender.send(Events::ConfigChanged);
+
         std::thread::spawn(move || Self::start_config_server(sender, configdata));
         s
     }

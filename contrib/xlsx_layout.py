@@ -23,6 +23,10 @@ for pair in range(10):
         z = zcell.value / 100.0
         strip1.append((xcellp.value/ 100.0, ycellp.value/ 100.0, z))
         strip2.append((xcellm.value/ 100.0, ycellm.value/ 100.0, z))
+
+    # opc server assumes 100 pixels per strips
+    strip1 = strip1 + [(0,0,0)]*(100-len(strip1))
+    strip2 = strip2 + [(0,0,0)]*(100-len(strip2))
     strips += [strip1, strip2]
 
 pixels = []

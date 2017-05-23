@@ -18,7 +18,7 @@ impl Eventer for StdinEventSource {
     fn get_events(&mut self, mut sender: std::sync::mpsc::Sender<Events>) {
         let stdin = std::io::stdin();
         let mut handle = stdin.lock();
-        let disco = false;
+        let mut disco = false;
         loop {
 
             let mut buffer = String::new();

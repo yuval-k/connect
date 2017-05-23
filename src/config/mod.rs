@@ -2,7 +2,7 @@ use std;
 use std::net::UdpSocket;
 use rosc;
 
-use super::Events;
+use super::{Events, Modes};
 
 struct ConfigData {
     num_leds_for_pole: usize,
@@ -131,8 +131,11 @@ impl Config {
                         return;
                     }
                 };
-
-                sender.send(Events::Disco(enabled));
+              if enabled{
+                sender.send(Events::ModeChanged(Modes::Disco));
+                }else {
+                sender.send(Events::ModeChanged(Modes::Regular));
+                }
             }
             _ => {}
         }

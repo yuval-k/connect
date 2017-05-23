@@ -1,5 +1,5 @@
 use std;
-use super::{EventTypes, Events, NUM_POLES};
+use super::{EventTypes, Events, Modes, NUM_POLES};
 use serial;
 use std::io::BufRead;
 use serial::SerialPort;
@@ -28,7 +28,11 @@ impl Eventer for StdinEventSource {
 
             if buffer == "disco" {
                 disco = !disco;
-                sender.send(Events::Disco(disco));
+                if disco{
+                sender.send(Events::ModeChanged(Modes::Disco));
+                }else {
+                sender.send(Events::ModeChanged(Modes::Regular));
+                }
                 continue;
 
             }

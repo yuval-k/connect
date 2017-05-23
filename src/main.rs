@@ -342,8 +342,11 @@ fn work<F>(config: config::Config,
                         *pixel = black;
                     }
                 }
-                if ! discomode{
-                    animator.animate_poles(&mut poles, &touches, now - last_anim_time);
+                let delta = now - last_anim_time;
+                if !discomode {
+                    animator.animate_poles(&mut poles, &touches, delta);
+                } else {
+                    animator.animate_disco(&mut poles, delta);
                 }
                 draw_poles(&mut poles);
 
@@ -352,8 +355,12 @@ fn work<F>(config: config::Config,
             Events::ConfigChanged => {
 
                 let polen = config.get_num_leds_for_pole();
+                let cp1 = config.get_cp1();
+                let cp2 = config.get_cp2();
                 for p in poles.iter_mut() {
                     p.set_pole_length(polen);
+                    p.set_cp1(cp1);
+                    p.set_cp2(cp2);
                 }
             }
             Events::Disco(enabled) => {
@@ -386,20 +393,36 @@ pub struct Pole {
     pub base_color: palette::Hsl,
     pub current_color: palette::Hsl,
     internal_leds: Vec<palette::Hsl>,
-    
+
     pub state: PoleState,
     pub anim: Option<PoleAnimations>,
 
-    pole_length : usize,
+    pole_length: usize,
+    cp1: usize,
+    cp2: usize,
 }
 
 impl Pole {
-    pub fn leds(&mut self) -> &mut [palette::Hsl]{
+    pub fn leds(&mut self) -> &mut [palette::Hsl] {
         &mut self.internal_leds[..self.pole_length]
     }
-    
-    pub fn set_pole_length(&mut self, newl : usize) {
+
+    pub fn leds_cp1(&mut self) -> &mut [palette::Hsl] {
+        &mut self.internal_leds[..self.cp1]
+    }
+
+    pub fn leds_cp2(&mut self) -> &mut [palette::Hsl] {
+        &mut self.internal_leds[..self.cp2]
+    }
+
+    pub fn set_pole_length(&mut self, newl: usize) {
         self.pole_length = std::cmp::min(self.internal_leds.len(), newl);
+    }
+    pub fn set_cp1(&mut self, newl: usize) {
+        self.cp1 = std::cmp::min(self.internal_leds.len(), newl);
+    }
+    pub fn set_cp2(&mut self, newl: usize) {
+        self.cp2 = std::cmp::min(self.internal_leds.len(), newl);
     }
     fn new(rads: f32) -> Self {
         Pole {
@@ -414,7 +437,9 @@ impl Pole {
 
             anim: None,
             state: PoleState::NotTouched,
-            pole_length : LEDS_PER_STRING,
+            pole_length: LEDS_PER_STRING,
+            cp1: LEDS_PER_STRING,
+            cp2: LEDS_PER_STRING,
         }
     }
 }
@@ -433,7 +458,7 @@ fn draw_poles_to_array(c: &mut pixels::LedArray, poles: &[Pole]) {
 impl animations::Drawer for Pole {
     fn draw(&self, array: &mut pixels::LedArray) {
         // ?!
-        for (i,c) in (0..array.len()).zip(self.internal_leds.iter()) {
+        for (i, c) in (0..array.len()).zip(self.internal_leds.iter()) {
             pixels::set_color(array, i, *c);
         }
     }

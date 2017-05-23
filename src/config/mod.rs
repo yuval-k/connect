@@ -6,11 +6,17 @@ use super::Events;
 
 struct ConfigData {
     num_leds_for_pole: usize,
+    cp1: usize,
+    cp2: usize,
 }
 
 impl ConfigData {
     fn new() -> Self {
-        ConfigData { num_leds_for_pole: 54 }
+        ConfigData {
+            num_leds_for_pole: 54,
+            cp1: 21,
+            cp2: 34,
+        }
     }
 }
 
@@ -36,7 +42,16 @@ impl Config {
         numret
     }
 
-    fn start_config_server(sender: std::sync::mpsc::Sender<Events>, mut data: std::sync::Arc<std::sync::RwLock<ConfigData>>) {
+    pub fn get_cp1(&self) -> usize {
+        self.data.read().unwrap().cp1
+    }
+
+    pub fn get_cp2(&self) -> usize {
+        self.data.read().unwrap().cp2
+    }
+
+    fn start_config_server(sender: std::sync::mpsc::Sender<Events>,
+                           mut data: std::sync::Arc<std::sync::RwLock<ConfigData>>) {
         let mut socket = UdpSocket::bind("0.0.0.0:8134").expect("this must work");
         info!("osc config server up");
         let mut buf = [0; 4096];
@@ -63,7 +78,9 @@ impl Config {
     }
 
 
-    fn process(data: &mut std::sync::Arc<std::sync::RwLock<ConfigData>>, sender: &std::sync::mpsc::Sender<Events>, p : rosc::OscPacket ) {
+    fn process(data: &mut std::sync::Arc<std::sync::RwLock<ConfigData>>,
+               sender: &std::sync::mpsc::Sender<Events>,
+               p: rosc::OscPacket) {
         match p {
             rosc::OscPacket::Message(m) => {
                 Self::process_message(data, sender, m);
@@ -77,10 +94,12 @@ impl Config {
         }
     }
 
-    fn process_message(data: &mut std::sync::Arc<std::sync::RwLock<ConfigData>>,  sender: &std::sync::mpsc::Sender<Events>, m : rosc::OscMessage) {
+    fn process_message(data: &mut std::sync::Arc<std::sync::RwLock<ConfigData>>,
+                       sender: &std::sync::mpsc::Sender<Events>,
+                       m: rosc::OscMessage) {
 
         match (m.addr.as_ref(), m.args) {
-            ("/pole_leds", Some(ref args) ) if args.len() == 1 => {
+            ("/pole_leds", Some(ref args)) if args.len() == 1 => {
                 let arg = &args[0];
                 match *arg {
                     rosc::OscType::Int(num) => {
@@ -102,23 +121,11 @@ impl Config {
                 sender.send(Events::ConfigChanged);
             }
 
-            ("/disco", Some(ref args) ) if args.len() == 1 => {
+            ("/disco", Some(ref args)) if args.len() == 1 => {
                 let arg = &args[0];
-               let enabled = match *arg {
-                    rosc::OscType::Int(num) => {
-                        if num > 0 {
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    rosc::OscType::Float(num) => {
-                        if num > 0.0 {
-                            true
-                        } else {
-                            false
-                        }
-                    }
+                let enabled = match *arg {
+                    rosc::OscType::Int(num) => if num > 0 { true } else { false },
+                    rosc::OscType::Float(num) => if num > 0.0 { true } else { false },
                     _ => {
                         warn!("got unexpect message {:?}", *arg);
                         return;
@@ -127,9 +134,7 @@ impl Config {
 
                 sender.send(Events::Disco(enabled));
             }
-            _  => {
-                
-            }
+            _ => {}
         }
     }
 }

@@ -1,0 +1,11 @@
+[Unit]
+Description=Connect Service
+
+[Service]
+WorkingDirectory=/opt/connect/
+EnvironmentFile=/etc/connect/env
+ExecStart=/opt/connect/connect "$DAEMON_ARGS"
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

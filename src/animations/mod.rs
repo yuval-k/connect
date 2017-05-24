@@ -68,6 +68,7 @@ pub struct Animator {
     sprites: Vec<Box<PoleAnimation>>,
     osc: super::osc::OSCManager,
 
+    heart_phase: AnimPhase,
     flower_phase: AnimPhase,
     disco_phase: AnimPhase,
     disco_state : f32,
@@ -80,7 +81,11 @@ impl Animator {
             sprites: vec![],
             backgroundsprites: vec![],
             osc: osc,
+            heart_phase: AnimPhase::new(std::time::Duration::from_secs(10)),
+            
             flower_phase: AnimPhase::new(std::time::Duration::from_secs(10)),
+            
+
             disco_phase: AnimPhase::new(std::time::Duration::from_millis(500)),
             disco_state: 0.0,
         }
@@ -183,7 +188,19 @@ pub fn draw_petal_cp2(poles: &mut [super::Pole],index : usize, c : palette::Hsl)
             }   
 }
 
+    pub fn animate_hearts(&mut self,
+                         poles: &mut [super::Pole],
+                         delta: std::time::Duration) {
+        let val = self.heart_phase.cyclic_update(delta);
+        for i in 0..NUM_POLES {
 
+            let mut curhue = poles[i].base_color;
+            curhue.lightness = 0.5*val;
+            for p in  poles[i].heart().iter_mut() {
+             *p = curhue;
+            }
+        }
+    }
 
     pub fn animate_poles(&mut self,
                          poles: &mut [super::Pole],

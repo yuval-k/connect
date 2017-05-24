@@ -24,9 +24,21 @@ for pair in range(10):
         strip1.append((xcellp.value/ 100.0, ycellp.value/ 100.0, z))
         strip2.append((xcellm.value/ 100.0, ycellm.value/ 100.0, z))
 
+    # add heart LEDs:
+    lastx,lasty,lastz = strip1[-1]
+    strip1 = strip1  + [(lastx,lasty,0)]*14
+
+    lastx,lasty,lastz = strip2[-1]
+    strip2 = strip2  + [(lastx,lasty,0)]*14
+
     # opc server assumes 100 pixels per strips
     strip1 = strip1 + [(0,0,0)]*(100-len(strip1))
     strip2 = strip2 + [(0,0,0)]*(100-len(strip2))
+
+
+    strip1.sort(key=lambda x:-x[2])
+    strip2.sort(key=lambda x:-x[2])
+
     strips += [strip1, strip2]
 
 pixels = []

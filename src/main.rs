@@ -356,6 +356,9 @@ fn work<F>(config: config::Config,
                         animator.animate_disco(&mut poles, delta);
                     }
                 }
+
+                animator.animate_hearts(&mut poles, delta);
+
                 draw_poles(&mut poles);
 
                 last_anim_time = now;
@@ -365,10 +368,12 @@ fn work<F>(config: config::Config,
                 let polen = config.get_num_leds_for_pole();
                 let cp1 = config.get_cp1();
                 let cp2 = config.get_cp2();
+                let heart = config.get_heart();
                 for p in poles.iter_mut() {
                     p.set_pole_length(polen);
                     p.set_cp1(cp1);
                     p.set_cp2(cp2);
+                    p.set_heart(&heart);
                 }
             }
             Events::ModeChanged(newmode) => {
@@ -419,11 +424,16 @@ pub struct Pole {
     pole_length: usize,
     cp1: usize,
     cp2: usize,
+    heart: std::ops::Range<usize>,
 }
 
 impl Pole {
     pub fn leds(&mut self) -> &mut [palette::Hsl] {
         &mut self.internal_leds[..self.pole_length]
+    }
+
+    pub fn heart(&mut self) -> &mut [palette::Hsl] {
+        &mut self.internal_leds[self.heart.clone()]
     }
 
     pub fn leds_cp1(&mut self) -> &mut [palette::Hsl] {
@@ -443,6 +453,9 @@ impl Pole {
     pub fn set_cp2(&mut self, newl: usize) {
         self.cp2 = std::cmp::min(self.internal_leds.len(), newl);
     }
+    pub fn set_heart(&mut self, newl: &std::ops::Range<usize>) {
+        self.heart = std::cmp::max(0, newl.start)..std::cmp::min(self.internal_leds.len(), newl.end);
+    }
     fn new(rads: f32) -> Self {
         Pole {
             level: 0.,
@@ -459,6 +472,7 @@ impl Pole {
             pole_length: LEDS_PER_STRING,
             cp1: LEDS_PER_STRING,
             cp2: LEDS_PER_STRING,
+            heart: 0..0,
         }
     }
 }

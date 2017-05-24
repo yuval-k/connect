@@ -8,6 +8,8 @@ struct ConfigData {
     num_leds_for_pole: usize,
     cp1: usize,
     cp2: usize,
+
+    heart: std::ops::Range<usize>
 }
 
 impl ConfigData {
@@ -16,6 +18,7 @@ impl ConfigData {
             num_leds_for_pole: 54,
             cp1: 20,
             cp2: 34,
+            heart: 54..(54+14)
         }
     }
 }
@@ -48,6 +51,10 @@ impl Config {
 
     pub fn get_cp2(&self) -> usize {
         self.data.read().unwrap().cp2
+    }
+
+    pub fn get_heart(&self) -> std::ops::Range<usize> {
+        self.data.read().unwrap().heart.clone()
     }
 
     fn start_config_server(sender: std::sync::mpsc::Sender<Events>,

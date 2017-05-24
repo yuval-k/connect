@@ -71,6 +71,7 @@ pub enum Events {
 pub enum Modes {
     Regular,
     Disco,
+    Flower,
 }
 
 /// touch goes up to cp1 and twinkels / breathes like the heart, the hight it is the higher the lum.
@@ -324,8 +325,6 @@ fn work<F>(config: config::Config,
 
     let mut touches = TouchMap::new(timeout);
 
-
-    let black = palette::Hsl::new(palette::RgbHue::from_radians(0.), 0., 0.);
     let mut mode = Modes::Regular;
     let mut last_anim_time = std::time::Instant::now();
     for event in receiver.into_iter() {
@@ -343,16 +342,15 @@ fn work<F>(config: config::Config,
                 touches.clean_timeout();
                 let now = std::time::Instant::now();
 
-                // darkness
-                for p in poles.iter_mut() {
-                    for pixel in p.internal_leds.iter_mut() {
-                        *pixel = black;
-                    }
-                }
                 let delta = now - last_anim_time;
                 match mode {
                     Modes::Regular => {
+                        // darkness
+                        clear(&mut poles);
                         animator.animate_poles(&mut poles, &touches, delta);
+                    }
+                    Modes::Flower => {
+                        animator.animate_flower(&mut poles, delta);
                     }
                     Modes::Disco => {
                         animator.animate_disco(&mut poles, delta);
@@ -374,12 +372,23 @@ fn work<F>(config: config::Config,
                 }
             }
             Events::ModeChanged(newmode) => {
+
+                clear(&mut poles);
                 mode = newmode;
             }            
         }
     }
 }
 
+fn clear(mut poles: &mut [Pole]) {
+
+    let black = palette::Hsl::new(palette::RgbHue::from_radians(0.), 0., 0.);
+    for p in poles.iter_mut() {
+        for pixel in p.internal_leds.iter_mut() {
+            *pixel = black;
+        }
+    }
+}
 
 
 #[derive(Clone,Debug,PartialEq)]

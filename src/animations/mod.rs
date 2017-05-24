@@ -68,7 +68,9 @@ pub struct Animator {
     sprites: Vec<Box<PoleAnimation>>,
     osc: super::osc::OSCManager,
 
+    flower_phase: AnimPhase,
     disco_phase: AnimPhase,
+    disco_state : f32,
 }
 
 impl Animator {
@@ -78,67 +80,111 @@ impl Animator {
             sprites: vec![],
             backgroundsprites: vec![],
             osc: osc,
-            disco_phase: AnimPhase::new(std::time::Duration::from_secs(10)),
+            flower_phase: AnimPhase::new(std::time::Duration::from_secs(10)),
+            disco_phase: AnimPhase::new(std::time::Duration::from_millis(500)),
+            disco_state: 0.0,
         }
     }
 
     pub fn animate_disco(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
-        let current = self.disco_phase.cyclic_update(delta);
+         self.disco_phase.update(delta);
+
+         if self.disco_phase.is_done() {
+             self.disco_state += 1.0;
+             self.disco_phase.cycle();
+         } else {
+             return;
+         }
+
+        for i in 0..(NUM_POLES / 2) {
+            // TODO: randomize this
+            let currentangle = 2. * std::f32::consts::PI  *0.3245251*(self.disco_state+i as f32);
+            let hue = palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5);
+
+            Self::draw_petal_cp2(poles, i , hue);
+        }
+        
+        for i in 0..(NUM_POLES / 2) {
+            // TODO: randomize this
+            let currentangle = 2. * std::f32::consts::PI  *0.3245251*(self.disco_state+5.+i as f32);
+            let hue = palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5);
+
+            Self::draw_petal_cp1(poles, i , hue);
+        }
+    }
+
+    pub fn animate_flower(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
+        let current = self.flower_phase.cyclic_update(delta);
 
         for i in 0..(NUM_POLES / 2) {
             let string1 = i * 2;
-            let string2 = match i {
-                0...1 => NUM_POLES + string1 - 3,
-                _ => string1 - 3,
-            };
+
             let currentangle = 2. * std::f32::consts::PI *
                                (current + (string1 as f32) / (NUM_POLES as f32));
             let oppositeangle = currentangle - std::f32::consts::PI;
             let ophue = palette::Hsl::new(palette::RgbHue::from_radians(oppositeangle), 1., 0.5);
 
-            {
-                let pole1 = poles[string1].leds_cp2();
-                for p in pole1.iter_mut() {
-                    *p = ophue;
-                }
-            }
-            {
-                let pole2 = poles[string2].leds_cp2();
-                for p in pole2.iter_mut() {
-                    *p = ophue;
-                }
-            }
-
+            Self::draw_petal_cp2(poles, i , ophue);
         }
 
         for i in 0..(NUM_POLES / 2) {
+
             // first = 1p, second = 1m, third = 2p; petal = 1m + 2p
             let string1 = i * 2;
-            let string2 = if i == 0 { NUM_POLES - 1 } else { string1 - 1 };
 
             let currentangle = 2. * std::f32::consts::PI *
                                (current + (string1 as f32) / (NUM_POLES as f32));
             let curhue = palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5);
+            Self::draw_petal_cp1(poles, i , curhue);
+
+        }
+    }
+    
+    pub fn draw_petal_cp1(poles: &mut [super::Pole],index : usize, c : palette::Hsl) {
+ 
+            // first = 1p, second = 1m, third = 2p; petal = 1m + 2p
+            let string1 = index * 2;
+            let string2 = if index == 0 { NUM_POLES - 1 } else { string1 - 1 };
 
             {
                 let pole1 = poles[string1].leds_cp1();
                 for p in pole1.iter_mut() {
-                    *p = curhue;
+                    *p = c;
                 }
             }
             {
                 let pole2 = poles[string2].leds_cp1();
                 for p in pole2.iter_mut() {
-                    *p = curhue;
+                    *p = c;
+                }
+            }   
+}
+
+pub fn draw_petal_cp2(poles: &mut [super::Pole],index : usize, c : palette::Hsl) {
+ 
+            // first = 1p, second = 1m, third = 2p; petal = 1m + 2p
+            let string1 = index * 2;
+            let string2 = match index {
+                0...1 => NUM_POLES + string1 - 3,
+                _ => string1 - 3,
+            };
+
+            {
+                let pole1 = poles[string1].leds_cp2();
+                for p in pole1.iter_mut() {
+                    *p = c;
                 }
             }
+            {
+                let pole2 = poles[string2].leds_cp2();
+                for p in pole2.iter_mut() {
+                    *p = c;
+                }
+            }   
+}
 
-        }
 
 
-
-
-    }
     pub fn animate_poles(&mut self,
                          poles: &mut [super::Pole],
                          touches: &super::TouchMap,

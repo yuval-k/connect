@@ -26,15 +26,15 @@ impl Eventer for StdinEventSource {
 
             let buffer = buffer.trim();
 
-            if buffer == "disco" {
-                disco = !disco;
-                if disco {
-                    sender.send(Events::ModeChanged(Modes::Disco));
-                } else {
-                    sender.send(Events::ModeChanged(Modes::Regular));
-                }
+            let mode = match buffer.as_ref()  {
+                "disco" => Some(Modes::Disco),
+                "flower" => Some(Modes::Flower),
+                "reg" | "regular" => Some(Modes::Regular),
+                _ => None,
+            };
+            if let Some(mode) = mode {
+                sender.send(Events::ModeChanged(mode));
                 continue;
-
             }
 
             let mut words: Vec<&str> = buffer.split_whitespace().collect();

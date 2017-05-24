@@ -113,7 +113,7 @@ impl Config {
                         }
                     }
                     _ => {
-                        warn!("got unexpect message {:?}", *arg);
+                        warn!("got unexpect arg {:?}", *arg);
                         return;
                     }
                 }
@@ -121,12 +121,12 @@ impl Config {
                 sender.send(Events::ConfigChanged);
             }
 
-            ("/disco", Some(ref args)) if args.len() == 1 => {
+            ("/flower", Some(ref args)) if args.len() == 1 => {
                 let arg = &args[0];
                 let enabled = Self::to_bool(arg);
                 if let Some(enabled) = enabled {
                     if enabled {
-                        sender.send(Events::ModeChanged(Modes::Disco));
+                        sender.send(Events::ModeChanged(Modes::Flower));
                     } else {
                         sender.send(Events::ModeChanged(Modes::Regular));
                     }
@@ -134,7 +134,18 @@ impl Config {
                     warn!("got unexpect argument {:?}", *arg);
                 }
             }
-            _ => {}
+            ("/mode/disco", _) => {
+                sender.send(Events::ModeChanged(Modes::Disco));
+            }
+
+            ("/mode/reg", _) => {
+                sender.send(Events::ModeChanged(Modes::Regular));
+            }
+
+            ("/mode/flower", _) => {
+                sender.send(Events::ModeChanged(Modes::Flower));
+            }
+            _ => {warn!("got unexpected msg {:?}", m.addr);}
         }
     }
 

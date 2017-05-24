@@ -18,25 +18,37 @@ impl ConfigData {
             num_leds_for_pole: 54,
             cp1: 20,
             cp2: 34,
-            heart: 54..(54+14)
+            heart: 54..(54+14),
         }
     }
 }
 
 pub struct Config {
     data: std::sync::Arc<std::sync::RwLock<ConfigData>>,
+    configfile : std::path::PathBuf,
 }
 
 impl Config {
-    pub fn new(sender: std::sync::mpsc::Sender<Events>) -> Self {
+    pub fn new(configfile : &std::path::Path,sender: std::sync::mpsc::Sender<Events>) -> Self {
         let configdata = std::sync::Arc::new(std::sync::RwLock::new(ConfigData::new()));
-        let s = Config { data: configdata.clone() };
+        let mut s = Config { data: configdata.clone() , configfile : std::path::PathBuf::from(configfile)};
+
+        if s.configfile.exists() {
+            s.load_config();
+        }
 
         // generate config change event for the initial config
         sender.send(Events::ConfigChanged);
 
         std::thread::spawn(move || Self::start_config_server(sender, configdata));
         s
+    }
+    
+    fn load_config(&mut self) {
+        unimplemented!()
+    }
+    pub fn save_config(&mut self) {
+        unimplemented!()
     }
 
     pub fn get_num_leds_for_pole(&self) -> usize {
@@ -151,6 +163,9 @@ impl Config {
 
             ("/mode/flower", _) => {
                 sender.send(Events::ModeChanged(Modes::Flower));
+            }
+            ("/saveconfig", _) => {
+                sender.send(Events::SaveConfig);
             }
             _ => {warn!("got unexpected msg {:?}", m.addr);}
         }

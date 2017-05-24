@@ -63,6 +63,7 @@ pub enum Events {
     Reset,
     Draw,
     ConfigChanged,
+    SaveConfig,
     ModeChanged(Modes),
 }
 
@@ -158,6 +159,12 @@ fn main() {
                                     .value_name("FILE")
                                     .help("The device to program")
                                     .takes_value(true))
+                                .arg(clap::Arg::with_name("config")
+                                    .short("c")
+                                    .long("config")
+                                    .value_name("FILE")
+                                    .help("A configuration file with various settings")
+                                    .takes_value(true))
                                   .arg(clap::Arg::with_name("osc_server")
                                     .short("o")
                                     .long("osc_server")
@@ -189,6 +196,8 @@ fn main() {
     let rgb = matches.value_of("rgb")
         .map(|s| pixels::RgbOrder::new(s).expect("Invalid rgb value!"))
         .unwrap_or(pixels::RgbOrder::Rgb);
+
+    let configfile = matches.value_of("configfile").unwrap_or("./config.txt");
 
 
     env_logger::init().unwrap();
@@ -234,7 +243,7 @@ fn main() {
     });
 
     let animator = animations::Animator::new(osc::OSCManager::new(&osc_server));
-    let config = config::Config::new(tx.clone());
+    let config = config::Config::new(std::path::Path::new(configfile), tx.clone());
 
     work(config,
          move |poles| draw_poles_to_array(ledscapecontroller.as_mut(), poles),
@@ -314,7 +323,7 @@ impl TouchMap {
     }
 }
 
-fn work<F>(config: config::Config,
+fn work<F>(mut config: config::Config,
            mut draw_poles: F,
            mut poles: Vec<Pole>,
            timeout: std::time::Duration,
@@ -375,6 +384,9 @@ fn work<F>(config: config::Config,
                     p.set_cp2(cp2);
                     p.set_heart(&heart);
                 }
+            }
+            Events::SaveConfig => {
+                config.save_config();
             }
             Events::ModeChanged(newmode) => {
 

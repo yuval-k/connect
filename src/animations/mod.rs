@@ -81,7 +81,7 @@ impl Animator {
             sprites: vec![],
             backgroundsprites: vec![],
             osc: osc,
-            heart_phase: AnimPhase::new(std::time::Duration::from_secs(10)),
+            heart_phase: AnimPhase::new(std::time::Duration::from_secs(5)),
             
             flower_phase: AnimPhase::new(std::time::Duration::from_secs(10)),
             
@@ -192,10 +192,14 @@ pub fn draw_petal_cp2(poles: &mut [super::Pole],index : usize, c : palette::Hsl)
                          poles: &mut [super::Pole],
                          delta: std::time::Duration) {
         let val = self.heart_phase.cyclic_update(delta);
+
+        let breath_phase = if val <= 0.5 {val} else {2.*0.5-val};
+        let breath_phase = breath_phase * 2.0;
+
         for i in 0..NUM_POLES {
 
             let mut curhue = poles[i].base_color;
-            curhue.lightness = 0.5*val;
+            curhue.lightness = 0.1+0.5*breath_phase;
             for p in  poles[i].heart().iter_mut() {
              *p = curhue;
             }

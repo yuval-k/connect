@@ -351,8 +351,12 @@ fn work<F>(config: config::Config,
                 }
                 let delta = now - last_anim_time;
                 match mode {
-                    Modes::Regular => {animator.animate_poles(&mut poles, &touches, delta);}
-                    Modes::Disco => {animator.animate_disco(&mut poles, delta);}
+                    Modes::Regular => {
+                        animator.animate_poles(&mut poles, &touches, delta);
+                    }
+                    Modes::Disco => {
+                        animator.animate_disco(&mut poles, delta);
+                    }
                 }
                 draw_poles(&mut poles);
 

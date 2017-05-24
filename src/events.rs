@@ -28,10 +28,10 @@ impl Eventer for StdinEventSource {
 
             if buffer == "disco" {
                 disco = !disco;
-                if disco{
-                sender.send(Events::ModeChanged(Modes::Disco));
-                }else {
-                sender.send(Events::ModeChanged(Modes::Regular));
+                if disco {
+                    sender.send(Events::ModeChanged(Modes::Disco));
+                } else {
+                    sender.send(Events::ModeChanged(Modes::Regular));
                 }
                 continue;
 

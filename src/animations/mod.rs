@@ -88,11 +88,12 @@ impl Animator {
         for i in 0..(NUM_POLES / 2) {
             let string1 = i * 2;
             let string2 = match i {
-                0...1 =>  NUM_POLES + string1 - 3,
-                _ => string1 - 3
+                0...1 => NUM_POLES + string1 - 3,
+                _ => string1 - 3,
             };
-            let currentangle = 2. * std::f32::consts::PI * (current + (string1 as f32)/(NUM_POLES as f32));
-            let oppositeangle = currentangle - std::f32::consts::PI ;
+            let currentangle = 2. * std::f32::consts::PI *
+                               (current + (string1 as f32) / (NUM_POLES as f32));
+            let oppositeangle = currentangle - std::f32::consts::PI;
             let ophue = palette::Hsl::new(palette::RgbHue::from_radians(oppositeangle), 1., 0.5);
 
             {
@@ -115,7 +116,8 @@ impl Animator {
             let string1 = i * 2;
             let string2 = if i == 0 { NUM_POLES - 1 } else { string1 - 1 };
 
-            let currentangle = 2. * std::f32::consts::PI * (current + (string1 as f32)/(NUM_POLES as f32));
+            let currentangle = 2. * std::f32::consts::PI *
+                               (current + (string1 as f32) / (NUM_POLES as f32));
             let curhue = palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5);
 
             {

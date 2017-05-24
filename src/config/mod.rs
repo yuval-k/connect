@@ -123,21 +123,27 @@ impl Config {
 
             ("/disco", Some(ref args)) if args.len() == 1 => {
                 let arg = &args[0];
-                let enabled = match *arg {
-                    rosc::OscType::Int(num) => if num > 0 { true } else { false },
-                    rosc::OscType::Float(num) => if num > 0.0 { true } else { false },
-                    _ => {
-                        warn!("got unexpect message {:?}", *arg);
-                        return;
+                let enabled = Self::to_bool(arg);
+                if let Some(enabled) = enabled {
+                    if enabled {
+                        sender.send(Events::ModeChanged(Modes::Disco));
+                    } else {
+                        sender.send(Events::ModeChanged(Modes::Regular));
                     }
-                };
-              if enabled{
-                sender.send(Events::ModeChanged(Modes::Disco));
-                }else {
-                sender.send(Events::ModeChanged(Modes::Regular));
+                } else {
+                    warn!("got unexpect argument {:?}", *arg);
                 }
             }
             _ => {}
+        }
+    }
+
+    fn to_bool(t: &rosc::OscType) -> Option<bool> {
+        match *t {
+            rosc::OscType::Int(num) => Some(if num != 0 { true } else { false }),
+            rosc::OscType::Float(num) => Some(if num != 0.0 { true } else { false }),
+            rosc::OscType::Bool(b) => Some(b),
+            _ => None,
         }
     }
 }

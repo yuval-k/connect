@@ -242,6 +242,17 @@ fn main() {
         panic!("event loop should be endless")
     });
 
+
+
+    let newtx = tx.clone();
+    std::thread::spawn(move || {
+        use events::Eventer;
+        let tx = newtx;
+        let mut udpeventer = events::UDPEventSource::new();
+        udpeventer.get_events(tx);
+        panic!("event loop should be endless")
+    });
+
     let animator = animations::Animator::new(osc::OSCManager::new(&osc_server));
     let config = config::Config::new(std::path::Path::new(configfile), tx.clone());
 

@@ -45,10 +45,10 @@ impl Config {
     }
     
     fn load_config(&mut self) {
-        unimplemented!()
+   //     unimplemented!()
     }
     pub fn save_config(&mut self) {
-        unimplemented!()
+     //   unimplemented!()
     }
 
     pub fn get_num_leds_for_pole(&self) -> usize {
@@ -84,11 +84,14 @@ impl Config {
             let buf = &mut buf[..amt];
 
             let res = rosc::decoder::decode(&buf);
-            if res.is_err() {
+            let msg = match res {
+                Err(_) => {
+
                 // TODO log
                 continue;
-            }
-            let msg = res.unwrap();
+                }
+                Ok(msg) => msg,
+            };
 
             debug!("got osc packet {:?}", &msg);
             Self::process(&mut data, &sender, msg);

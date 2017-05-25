@@ -3,7 +3,8 @@ use super::{EventTypes, Events, Modes, NUM_POLES};
 use serial;
 use std::io::BufRead;
 use serial::SerialPort;
-
+use std::net::UdpSocket;
+use rosc;
 
 pub trait Eventer: std::marker::Send {
     fn get_events(&mut self, sender: std::sync::mpsc::Sender<Events>);
@@ -208,9 +209,9 @@ impl SerialEventSource {
 
                         if senderindex == (NUM_POLES - 1) {
                             Self::send_events(sender, &events[pastindex], &events[currentindex]);
-                            let tmp = currentindex;
-                            currentindex = pastindex;
-                            pastindex = tmp;
+
+                            std::mem::swap(&mut currentindex, &mut pastindex);
+
                             for e in events[currentindex].iter_mut() {
                                 for b in e.iter_mut() {
                                     *b = false;
@@ -265,4 +266,126 @@ pub fn get_eventer(s: &str) -> Box<Eventer> {
     } else {
         Box::new(SerialEventSource::new(s))
     }
+}
+
+
+
+pub struct UDPEventSource {
+    events: [[bool; NUM_POLES]; NUM_POLES],
+    socket: UdpSocket,
+}
+
+
+impl Eventer for UDPEventSource {
+    fn get_events(&mut self, mut sender: std::sync::mpsc::Sender<Events>) {
+        
+        info!("osc event server up");
+        let mut buf = [0; 4096];
+        loop {
+            let res = self.socket.recv_from(&mut buf);
+            if res.is_err() {
+                // TODO log
+                continue;
+            }
+            let (amt, src) = res.unwrap();
+            let buf = &mut buf[..amt];
+
+            let res = rosc::decoder::decode(&buf);
+            let msg = match res {
+                Err(_) => {
+
+                // TODO log
+                continue;
+                }
+                Ok(msg) => msg,
+            };
+
+            debug!("got event osc packet {:?}", &msg);
+            self.process(&sender, msg);
+        }
+    }
+
+
+    fn get_timeout(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(1000)
+    }
+}
+
+
+impl UDPEventSource {
+
+    pub fn new() -> Self {
+        UDPEventSource {
+            events: [[false; NUM_POLES];NUM_POLES],
+            socket : UdpSocket::bind("0.0.0.0:3134").expect("this must work"),
+        }
+    }
+
+    fn process(&mut self, sender: &std::sync::mpsc::Sender<Events>,
+               p: rosc::OscPacket) {
+       match p {
+            rosc::OscPacket::Message(m) => {
+                self.process_message( sender, m);
+            }
+            rosc::OscPacket::Bundle(b) => {
+                // we ignore time tag. sorry.
+                for inner in b.content {
+                    self.process( sender, inner);
+                }
+            }
+        }
+    }
+
+
+// /pole_touch
+// first arg is int: my id 
+// second arg is V{id, map}
+
+
+    fn process_message(&mut self, sender: &std::sync::mpsc::Sender<Events>,
+                       m: rosc::OscMessage) {
+        match (m.addr.as_ref(), m.args) {
+            ("/pole_touch", Some(ref args)) if (args.len() == 2) => {
+                let arg1 = &args[0];
+                let arg2 = &args[1];
+
+                let id = match *arg1 {
+                    rosc::OscType::Int(num) if (num >= 0) &&  ((num as usize) < NUM_POLES) => { num as usize} ,
+                    _ => {warn!("got event unexpected msg {:?}", *arg1);return ;}
+                };
+                let bitmap = match *arg2 {
+                    rosc::OscType::Int(num) => num,
+                    _ => {warn!("got event unexpected msg {:?}", *arg1);return ;}
+                };
+
+                let mut currentstate = [false; NUM_POLES];
+                for i in 0..NUM_POLES {
+                    currentstate[i] = if (bitmap >> i) != 0 {true} else {false};
+                }
+                
+              //  sender.send(Events:: ) 
+
+            for j in 0..NUM_POLES {
+                let past_state = self.events[id][j] || self.events[j][id];
+                if currentstate[j] != past_state  {
+                    let event = match currentstate[j] {
+                        false => {
+                            debug!("udp Not Connected({},{})", id, j);
+                            Events::Stop(EventTypes::Connect(id, j))
+                        }
+                        true => {
+                            debug!("udp Connect({},{})", id, j);
+                            Events::Start(EventTypes::Connect(id, j))
+                        }
+                    };
+                    sender.send(event);
+                }
+            }
+            self.events[id] = currentstate;
+
+            }
+            _ => {warn!("got event unexpected msg {:?}", m.addr);}
+        }
+    }
+
 }

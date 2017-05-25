@@ -275,7 +275,6 @@ pub struct UDPEventSource {
     socket: UdpSocket,
 }
 
-
 impl Eventer for UDPEventSource {
     fn get_events(&mut self, mut sender: std::sync::mpsc::Sender<Events>) {
         
@@ -287,14 +286,17 @@ impl Eventer for UDPEventSource {
                 // TODO log
                 continue;
             }
-            let (amt, src) = res.unwrap();
+            let (amt, src) = res.unwrap();  
             let buf = &mut buf[..amt];
+
+            debug!("Received udp packet {}",amt);
+            
 
             let res = rosc::decoder::decode(&buf);
             let msg = match res {
-                Err(_) => {
+                Err(e) => {
 
-                // TODO log
+                warn!("Error parsing packet udp event {:?}", e);
                 continue;
                 }
                 Ok(msg) => msg,
@@ -344,47 +346,67 @@ impl UDPEventSource {
 
     fn process_message(&mut self, sender: &std::sync::mpsc::Sender<Events>,
                        m: rosc::OscMessage) {
-        match (m.addr.as_ref(), m.args) {
-            ("/pole_touch", Some(ref args)) if (args.len() == 2) => {
-                let arg1 = &args[0];
-                let arg2 = &args[1];
+        match (m.addr.as_ref(), &m.args) {
+            ("/pole_touch", &Some(ref args)) if (args.len() == 1) => {
+                let packet = match &args[0] {
+                    &rosc::OscType::Blob(ref packet) => packet,
+                    _ => {warn!("unexpected pole_touch packet {:?}", args[0]); return;}
+                };
 
-                let id = match *arg1 {
-                    rosc::OscType::Int(num) if (num >= 0) &&  ((num as usize) < NUM_POLES) => { num as usize} ,
-                    _ => {warn!("got event unexpected msg {:?}", *arg1);return ;}
-                };
-                let bitmap = match *arg2 {
-                    rosc::OscType::Int(num) => num,
-                    _ => {warn!("got event unexpected msg {:?}", *arg1);return ;}
-                };
+                let id = packet[0] as usize;
+                let bitmap = &packet[1..4];
+                let checksum = packet[4] ;
+
+                let sum : usize =  (id as usize) + bitmap.iter().fold(0usize, |acc : usize, &x| acc + (x as usize));
+                let sum : u8 = sum as u8;
+
+                if sum != checksum {
+                    warn!("Error in checksum {} != {}", sum, checksum);
+                    
+                }
+
+                if id >= NUM_POLES {
+                    warn!("Invalid id {}", id);
+                    return;
+                }
 
                 let mut currentstate = [false; NUM_POLES];
+                
                 for i in 0..NUM_POLES {
-                    currentstate[i] = if (bitmap >> i) != 0 {true} else {false};
+                    currentstate[i] = if ((bitmap[i>>3] >> (i&0b111)) & 0b1) != 0 {true} else {false};
                 }
                 
               //  sender.send(Events:: ) 
 
             for j in 0..NUM_POLES {
-                let past_state = self.events[id][j] || self.events[j][id];
-                if currentstate[j] != past_state  {
-                    let event = match currentstate[j] {
-                        false => {
+                let past_state = self.events[id][j];
+                let transpose_past_state =  
+                if j == id {
+                    false
+                } else {
+                    self.events[j][id]
+                };
+
+                let event = match (currentstate[j], past_state, transpose_past_state) {
+                    (false, true, false)  => {
                             debug!("udp Not Connected({},{})", id, j);
                             Events::Stop(EventTypes::Connect(id, j))
-                        }
-                        true => {
+                    }
+                    (true, false, false) => {
                             debug!("udp Connect({},{})", id, j);
                             Events::Start(EventTypes::Connect(id, j))
-                        }
-                    };
-                    sender.send(event);
-                }
+                    }
+                    _ => {
+                        // nothing to do...
+                        continue;
+                    }
+                };
+                sender.send(event);
             }
             self.events[id] = currentstate;
 
             }
-            _ => {warn!("got event unexpected msg {:?}", m.addr);}
+            _ => {warn!("got event unexpected msg {:?}", m);}
         }
     }
 

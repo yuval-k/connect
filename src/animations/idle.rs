@@ -1,5 +1,6 @@
 use std;
 use palette;
+use rand;
 
 use std::ops::Rem;
 
@@ -94,13 +95,108 @@ impl super::PoleAnimation for CircleAnim {
 }
 
 
+
+
+
+pub struct ExplosionAnim {
+    pub phase: AnimPhase,
+    pub color: palette::Hsl,
+}
+
+impl ExplosionAnim {
+    pub fn new() -> Self {
+        ExplosionAnim {
+            phase: AnimPhase::new(std::time::Duration::from_millis(500)),
+            color: palette::Hsl::new(palette::RgbHue::from_radians(0.),1.0,1.0),
+        }
+    }
+}
+
+impl super::PoleAnimation for ExplosionAnim {
+    fn update(&mut self, delta: std::time::Duration) {
+        self.phase.update(delta);
+    }
+    fn is_done(&self) -> bool {
+        self.phase.is_done()
+    }
+
+    fn animate_poles(&self, poles: &mut [super::super::Pole]) {
+        use std::f32;
+
+let curpos = self.phase.current();
+        let current_pixels = (8.0f32*(curpos*std::f32::consts::PI).sin()) as usize; //if curpos  <= 0.5 {   (10.0*2.0* curpos) as usize } else { (10.0*2.0* (1.0-curpos)) as usize } ;
+
+        for p in poles {
+            let len = std::cmp::min(current_pixels, p.leds().len());
+
+            for pixel in p.leds().iter_mut().take(len) {
+                *pixel = self.color;
+            }
+
+        }
+    }
+}
+
+
+
+pub struct TwinkleAnim {
+    pub phase: AnimPhase,
+    pub color: palette::Hsl,
+    pub index : Vec<(usize,usize)>,
+}
+
+impl TwinkleAnim {
+    pub fn new(color: palette::Hsl, total_time: std::time::Duration) -> Self {
+        let mut index : Vec<(usize,usize)> = vec![];
+
+        let rand_pixel = rand::random::<usize>() % 32;
+
+        for i in 0..5 {
+        let rand_pole = rand::random::<usize>() % super::NUM_POLES;
+        // TODO make sure rand_pole is differnet each time., and rand pixel is not on the same line.
+            index.push((rand_pole, rand_pixel));
+        }
+
+        TwinkleAnim {
+            phase: AnimPhase::new(total_time),
+            color: color,
+            index: index
+        }
+    }
+}
+
+
+impl super::PoleAnimation for TwinkleAnim {
+    fn update(&mut self, delta: std::time::Duration) {
+        self.phase.update(delta);
+    }
+    fn is_done(&self) -> bool {
+        self.phase.is_done()
+    }
+
+    fn animate_poles(&self, poles: &mut [super::super::Pole]) {
+        use std::f32;
+
+        let curpos = self.phase.current();
+        let current_pixels = (8.0f32*(curpos*std::f32::consts::PI).sin()) as usize; //if curpos  <= 0.5 {   (10.0*2.0* curpos) as usize } else { (10.0*2.0* (1.0-curpos)) as usize } ;
+
+        for &(pole, led) in self.index.iter() {
+            poles[pole].leds()[led] = self.color;
+        }
+    }
+}
+
+
+
+
+
 pub struct IdleAnim {
     add_circle_phase: AnimPhase,
 }
 
 impl IdleAnim {
     pub fn new() -> Self {
-        IdleAnim { add_circle_phase: AnimPhase::new(std::time::Duration::from_secs(1)) }
+        IdleAnim { add_circle_phase: AnimPhase::new(std::time::Duration::from_millis(200)) }
     }
 
     pub fn animate_poles<F>(&mut self,
@@ -113,14 +209,16 @@ impl IdleAnim {
 
         self.add_circle_phase.update(delta);
         if self.add_circle_phase.is_done() {
-            (animator)(Box::new(CircleAnim::new(palette::Hsl::new(palette::RgbHue::from_radians(0.),
-                                                               1.,
-                                                               0.5),
-                                             std::time::Duration::from_secs(LED_ANIM_DURATION))));
+            (animator)(Box::new(TwinkleAnim::new(palette::Hsl::new(palette::RgbHue::from_radians(0.0),
+                                                               1.0,
+                                                               1.0),
+                                             std::time::Duration::from_millis(200))));
         }
         self.add_circle_phase.cycle();
 
-        let color_background = palette::Hsl::new(palette::RgbHue::from_radians(0.), 1., 0.05);
+        let color_background = palette::Hsl::new(palette::RgbHue::from_radians(248.0*std::f32::consts::PI/180.0),
+                                                               0.98,
+                                                               0.15);
 
         for p in poles.iter_mut() {
             // darkness

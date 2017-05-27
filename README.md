@@ -64,6 +64,8 @@ then:
 edit:  src/arm/am335x-boneblack-wireless-emmc-overlay.dts
 make sure that /boot/uEnv.txt has dtb set to m335x-boneblack-wireless-emmc-overlay.dtb:
 dtb=am335x-boneblack-wireless-emmc-overlay.dtb
+OR
+dtb=am335x-boneblack-emmc-overlay.dtb
 
 comment out #include "am33xx-pruss-rproc.dtsi"
 uncomment #include "am33xx-pruss-uio.dtsi"

@@ -26,10 +26,10 @@ for pair in range(10):
 
     # add heart LEDs:
     lastx,lasty,lastz = strip1[-1]
-    strip1 = strip1  + [(lastx,lasty,0)]*14
+    strip1 = strip1  + [(lastx,lasty,lastz-.1)]*14
 
     lastx,lasty,lastz = strip2[-1]
-    strip2 = strip2  + [(lastx,lasty,0)]*14
+    strip2 = strip2  + [(lastx,lasty,lastz-.1)]*14
 
     # opc server assumes 100 pixels per strips
     strip1 = strip1 + [(0,0,0)]*(100-len(strip1))

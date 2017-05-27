@@ -303,6 +303,10 @@ pub fn draw_petal_cp2(poles: &mut [super::Pole],index : usize, c : palette::Hsl)
                 if was_exploding != is_exploding {
                     // TODO: send midi signal should_send = true;
                     sound_state_changed = true;
+
+                    if is_exploding {
+                        self.sprites.push(Box::new(idle::ExplosionAnim::new()))
+                    }
                 }
             }
 
@@ -358,6 +362,8 @@ pub fn draw_petal_cp2(poles: &mut [super::Pole],index : usize, c : palette::Hsl)
             if pole.level > 0. {
                 let circl_index: usize = (pole.level * ledslen as f32) as usize;
                 let color = pole.base_color;
+
+
                 for pixel in pole.leds().iter_mut().rev().take(circl_index) {
                     *pixel = color;
                 }
@@ -366,7 +372,7 @@ pub fn draw_petal_cp2(poles: &mut [super::Pole],index : usize, c : palette::Hsl)
                 let circl_index: usize = (pole.touch_level * ledslen as f32) as usize;
                 let color = pole.current_color;
 
-                for pixel in pole.leds().iter_mut().take(circl_index) {
+                for pixel in pole.leds_cp1().iter_mut().take(circl_index) {
                     *pixel = color;
                 }
             }

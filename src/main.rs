@@ -10,6 +10,7 @@ extern crate env_logger;
 extern crate serial;
 #[macro_use]
 extern crate clap;
+extern crate rand;
 
 #[macro_use]
 extern crate bitflags;
@@ -175,7 +176,7 @@ fn main() {
                                     .short("p")
                                     .long("opc_server")
                                     .value_name("OPC_SERVER")
-                                    .help("The open pixel control to send osc signals to")
+                                    .help("The open pixel control to send opc signals to")
                                     .takes_value(true))
                                 .arg(clap::Arg::with_name("rgb")
                                     .long("rgb")
@@ -213,8 +214,11 @@ fn main() {
 
     // TODO add OPCCLient
 
+    const h_shift : f32 = (2.0+0.5)*360.0/(NUM_POLES as f32);
+    const partition : f32 =  2_f32 * std::f32::consts::PI / (NUM_POLES as f32);
+
     let poles: Vec<Pole> = (0..NUM_POLES)
-        .map(|x| 2_f32 * std::f32::consts::PI * (x as f32) / (NUM_POLES as f32))
+        .map(|x| if x % 2 == 0 { partition * (x as f32) + h_shift} else  { partition * (x as f32) - h_shift})
         .map(|x| Pole::new(x))
         .collect();
 

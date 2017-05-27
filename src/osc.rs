@@ -29,6 +29,12 @@ const UNRISER_EVENT: &str = "unreiser";
 const EXPLODE_EVENT: &str = "explode";
 const NUM_RISERS: usize = 4;
 
+
+const ACHIVE_EVENT_1: &str = "/achive/1";
+const ACHIVE_EVENT_2: &str = "/achive/2";
+const ACHIVE_EVENT_3: &str = "/achive/3";
+const ACHIVE_EVENT_4: &str = "/achive/4";
+
 bitflags! {
     flags SoundState: u32 {
         const Touch       = 1 << 0,
@@ -180,12 +186,43 @@ impl OSCManager {
         if stream.set_nodelay(true).is_err() {
             warn!("set_nodelay call failed");
         }
+/*
+        let m = rosc::OscMessage{
+            addr:ACHIVE_EVENT_1.to_string(),
+            args: None,
+        };
+        Self::tcpSend(&mut stream, rosc::OscPacket::Message(m));
+        let m = rosc::OscMessage{
+            addr:ACHIVE_EVENT_2.to_string(),
+            args: None,
+        };
+        Self::tcpSend(&mut stream, rosc::OscPacket::Message(m));
+        let m = rosc::OscMessage{
+            addr:ACHIVE_EVENT_3.to_string(),
+            args: None,
+        };
+        Self::tcpSend(&mut stream, rosc::OscPacket::Message(m));
+        let m = rosc::OscMessage{
+            addr:ACHIVE_EVENT_4.to_string(),
+            args: None,
+        };
+        Self::tcpSend(&mut stream, rosc::OscPacket::Message(m));
 
+*/
         for msg in rx.iter() {
+
+            if Self::tcpSend(&mut stream, msg).is_err() {
+                error!("error sending message!");
+                return;
+            }
+        }
+    }
+
+    fn tcpSend(stream :&mut std::net::TcpStream , msg : rosc::OscPacket) -> std::io::Result<()> {
 
             let data = match rosc::encoder::encode(&msg) {
                 Ok(data) => data,
-                Err(_) => return,
+                Err(e) => return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid packet")),
             };
             info!("sending messgae!");
 
@@ -195,16 +232,8 @@ impl OSCManager {
             let size_to_send : [u8;4] = [((size >> 24) &0xff) as u8,((size >> 16) &0xff) as u8, ((size >> 8) &0xff) as u8, (size & 0xff) as u8];
 //            let size_to_send : [u8;4] = [(size & 0xff) as u8, ((size >> 8) &0xff) as u8,((size >> 16) &0xff) as u8, ((size >> 24) &0xff) as u8];
 
-            if stream.write_all(&size_to_send).is_err() {
-                error!("error sending size message!");
-                return;
-            }
-
-            if stream.write_all(&data).is_err() {
-                error!("error sending message!");
-                return;
-            }
-        }
+             stream.write_all(&size_to_send)?;
+             stream.write_all(&data)
     }
 
     fn sconnectudp(addr: &str, rx: &mut std::sync::mpsc::Receiver<rosc::OscPacket>) {

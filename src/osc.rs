@@ -163,7 +163,7 @@ impl OSCManager {
     fn sendmsg(addr: String, mut rx: std::sync::mpsc::Receiver<rosc::OscPacket>) {
         loop {
             info!("trying to connect {}", &addr);
-            Self::sconnectudp(&addr, &mut rx);
+            Self::sconnect(&addr, &mut rx);
             warn!("connection lost");
 
         }
@@ -182,15 +182,26 @@ impl OSCManager {
         }
 
         for msg in rx.iter() {
+
             let data = match rosc::encoder::encode(&msg) {
                 Ok(data) => data,
                 Err(_) => return,
             };
             info!("sending messgae!");
 
+
+            let size = data.len();
+
+            let size_to_send : [u8;4] = [((size >> 24) &0xff) as u8,((size >> 16) &0xff) as u8, ((size >> 8) &0xff) as u8, (size & 0xff) as u8];
+//            let size_to_send : [u8;4] = [(size & 0xff) as u8, ((size >> 8) &0xff) as u8,((size >> 16) &0xff) as u8, ((size >> 24) &0xff) as u8];
+
+            if stream.write_all(&size_to_send).is_err() {
+                error!("error sending size message!");
+                return;
+            }
+
             if stream.write_all(&data).is_err() {
                 error!("error sending message!");
-
                 return;
             }
         }
@@ -211,9 +222,12 @@ impl OSCManager {
             };
             info!("udp sending messgae!");
 
-            if socket.send_to(&data, addr).is_err() {
-                error!("error sending udp message!");
-                return;
+            // send each message 3 times cause udp is shit
+            for i in 0..3{
+                if socket.send_to(&data, addr).is_err() {
+                    error!("error sending udp message!");
+                    return;
+                }
             }
         }
     }

@@ -144,7 +144,6 @@ impl OSCManager {
         }
 
         Some(OSCEvent::Riser(risers))
-
     }
 
 
@@ -171,6 +170,7 @@ impl OSCManager {
             info!("trying to connect {}", &addr);
             Self::sconnect(&addr, &mut rx);
             warn!("connection lost");
+            std::thread::sleep(std::time::Duration::from_secs(5));
 
         }
     }

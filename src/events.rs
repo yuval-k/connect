@@ -260,11 +260,12 @@ impl SerialEventSource {
     }
 }
 
-pub fn get_eventer(s: &str) -> Box<Eventer> {
-    if s == "stdin" {
-        Box::new(StdinEventSource)
-    } else {
-        Box::new(SerialEventSource::new(s))
+pub fn get_eventer(s: &str) -> Option<Box<Eventer>> {
+    match s  {
+        "stdin" =>
+        Some(Box::new(StdinEventSource)),
+        "null"|"/dev/null"|"nil" => None,
+    _ =>       Some(Box::new(SerialEventSource::new(s))),
     }
 }
 

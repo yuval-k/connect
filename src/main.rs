@@ -236,15 +236,18 @@ fn main() {
     });
 
     let eventer = events::get_eventer(&device);
-    let timeout = eventer.get_timeout();
+    let timeout = eventer.as_ref().map_or(std::time::Duration::from_secs(1000)
+, |e|e.get_timeout());
 
-    let newtx = tx.clone();
-    std::thread::spawn(move || {
-        let tx = newtx;
-        let mut eventer = eventer;
-        eventer.get_events(tx);
-        panic!("event loop should be endless")
-    });
+    if let Some(eventer) = eventer {
+        let newtx = tx.clone();
+        std::thread::spawn(move || {
+            let tx = newtx;
+            let mut eventer = eventer;
+            eventer.get_events(tx);
+            panic!("event loop should be endless")
+        });
+    }
 
 
 

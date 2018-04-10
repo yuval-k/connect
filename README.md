@@ -1,9 +1,8 @@
                         
-[5:11 PM, 4/14/2017] איתי רונן: ער?                        
-[6:59 PM, 4/14/2017] איתי רונן: אלגוריתמיקה של אנימציה:
+
+
 
 אמביאנט - רקע כחול. ניצנוץ כוכבים, טבעת קונצנטרית מידי פעם בגווני כחול
-
 מגע בעמוד - זרימה כלפי מעלה של צבע. מבעבע בגוונים.
 
 שרשרת - זרימה כלפי מעלה בשני העמודים. ערבוב צבעים.
@@ -12,13 +11,14 @@
 
 
 
-Sikum:
-
+Sumaary:
 BBB will get messages (which needs to be timed out) via WiFI or some other MCI (perhaps via serial or spi?!).
 regardless the other logic that it might need to do is to sync all the nodes via a leg.
 
 
 # Prepare the BBB:
+Read about BBB: https://elinux.org/Beagleboard:BeagleBoneBlack
+
 // disable HDMI:
 // 
 

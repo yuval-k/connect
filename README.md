@@ -18,6 +18,8 @@ regardless the other logic that it might need to do is to sync all the nodes via
 
 # Prepare the BBB:
 Read about BBB: https://elinux.org/Beagleboard:BeagleBoneBlack
+Installation Guide to BBB: https://beagleboard.org/getting-started#update
+Explanation of the LED lights on the BBB During the Installation: https://elinux.org/Beagleboard:BeagleBoneBlack_Debian#Flashing_eMMC
 
 // disable HDMI:
 // 

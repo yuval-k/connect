@@ -1,13 +1,16 @@
 all: cross-build build target/layout.json
 
+TARGET=arm-linux-gnueabihf-
+
 .PHONY: cross-build
 cross-build:
-	CARGO_BUILD_RUSTFLAGS="-C link_args=-L$(shell pwd)/lib/arm-linux-gnueabihf" cargo build --target arm-unknown-linux-gnueabihf
-	CARGO_BUILD_RUSTFLAGS="-C link_args=-L$(shell pwd)/lib/arm-linux-gnueabihf" cargo build --release --target arm-unknown-linux-gnueabihf
+	RUSTFLAGS="-C linker=$(TARGET)gcc" AR=$(TARGET)ar CC=$(TARGET)gcc cargo build --features ledscape --target arm-unknown-linux-gnueabihf
+	RUSTFLAGS="-C linker=$(TARGET)gcc" AR=$(TARGET)ar CC=$(TARGET)gcc cargo build --release --features ledscape --target arm-unknown-linux-gnueabihf
+
 
 .PHONY: build
 build:
-	cargo build
+	cargo build --features gui
 
 #target/layout.json: contrib/make_connect_layout.py
 #	python contrib/make_connect_layout.py > target/layout.json

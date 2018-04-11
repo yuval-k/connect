@@ -6,7 +6,7 @@ authors = ["Yuval Kohavi <yuval.kohavi@gmail.com>"]
 
 [features]
 gui = ["kiss3d", "serde_json", "serde", "serde_derive", "nalgebra"]
-
+ledscape = []
 
 [dependencies]
 libc = "0.2.0"
@@ -34,3 +34,6 @@ serde_derive = { version = "1.0", optional = true }
 nalgebra    = { version = "0.12", optional = true }
 
 rand = "0.3"
+
+[build-dependencies]
+gcc = "0.3"

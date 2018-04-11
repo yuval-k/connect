@@ -18,14 +18,25 @@ struct ledscape_pixel_t {
 }
 
 #[repr(C, packed)]
-struct ledscape_frame_t {
+pub struct ledscape_frame_t {
     strip: [ledscape_pixel_t; LEDSCAPE_NUM_STRIPS],
+}
+
+
+impl ledscape_frame_t{
+
+    pub fn set_pixel(&mut self, strip_num: usize, r: u8, g: u8, b: u8, a: u8) {
+        self.strip[strip_num] = ledscape_pixel_t {
+            r: r,
+            g: g,
+            b: b,
+            a: a,
+        };
+    }
 }
 
 type LEDScapeHandle = *const ::libc::c_void;
 
-#[link(name = "prussdrv", kind = "static")]
-#[link(name = "ledscape", kind = "static")]
 extern "C" {
 
     fn ledscape_init(num_pixels: libc::c_uint) -> *const ::libc::c_void;
@@ -56,8 +67,22 @@ impl FramedIndex {
         }
     }
 }
+
 pub struct LEDScapeFrame {
     frame: &'static mut [ledscape_frame_t],
+}
+
+impl std::ops::DerefMut for LEDScapeFrame {
+    fn deref_mut(&mut self) -> &mut [ledscape_frame_t] {
+        self.frame
+    }
+}
+
+impl std::ops::Deref for LEDScapeFrame {
+    type Target = [ledscape_frame_t];
+    fn deref(& self) -> &[ledscape_frame_t] {
+        self.frame
+    }
 }
 
 impl LEDScapeFrame {
@@ -174,8 +199,11 @@ impl pixels::LedArray for LedscapeLedArray {
     }
 
     fn show(&mut self) -> std::io::Result<()> {
+        // wait for previous frame to draw
         self.ls.wait();
+        // draw new frame
         self.ls.draw(self.frame_index);
+        // switch frame
         self.frame_index = self.frame_index.other_frame();
         self.frame = unsafe { self.ls.frame(self.frame_index) };
         Ok(())

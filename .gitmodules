@@ -1,0 +1,3 @@
+[submodule "lib/LEDscape"]
+	path = lib/LEDscape
+	url = https://github.com/Yona-Appletree/LEDscape

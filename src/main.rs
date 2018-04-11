@@ -17,7 +17,7 @@ extern crate bitflags;
 
 use std::sync::mpsc;
 
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(feature = "ledscape")]
 mod ledscape;
 
 mod pixels;
@@ -78,7 +78,7 @@ pub enum Modes {
 
 /// touch goes up to cp1 and twinkels / breathes like the heart, the hight it is the higher the lum.
 
-const LEDS_PER_STRING: usize = 100;
+const LEDS_PER_STRING: usize = 70;
 const NUM_POLES: usize = 20;
 
 struct PoleLedArrayAdapter<'a> {
@@ -114,7 +114,7 @@ impl<'a> pixels::LedArray for PoleLedArrayAdapter<'a> {
 }
 
 
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(feature = "ledscape")]
 fn get_led_array() -> Box<pixels::LedArray> {
     use pixels::LedArray;
     let mut l = ledscape::LedscapeLedArray::new(LEDS_PER_STRING);
@@ -133,10 +133,13 @@ fn get_led_array() -> Box<pixels::LedArray> {
     }
     l.show();
     std::thread::sleep_ms(1000);
+    for i in 0..l.len() {
+        l.set_color_rgba(i, 0, 0, 0,0);
+    }
     Box::new(l)
 }
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg(not(feature = "ledscape"))]
 fn get_led_array() -> Box<pixels::LedArray> {
     match create_gui() {
         Some(l) => l,
@@ -225,7 +228,7 @@ fn main() {
     let (tx, rx) = mpsc::channel();
 
     // 20 fps
-    let fps_duration = std::time::Duration::from_secs(1) / 20;
+    let fps_duration = std::time::Duration::from_secs(1) / 10;
     let newtx = tx.clone();
     std::thread::spawn(move || {
         let tx = newtx;

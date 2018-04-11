@@ -8,10 +8,42 @@ pub struct Led {
     pub b: u8,
     pub a: u8,
 }
-
+/*
+impl<U: Float, C: IntoColor<U> > From<C> for Led {
+    fn from(color: C) -> Led {
+        let rgb = color.into_rgb();
+        let (r, g, b, a): (u8, u8, u8, u8) = rgb.to_pixel();
+         Led {
+            r: r,
+            g: g,
+            b: b,
+            a: a,
+        }
+    }
+}
+*/
 pub trait LedArray {
     fn len(&self) -> usize;
     fn set_color_rgba(&mut self, lednum: usize, r: u8, g: u8, b: u8, a: u8);
+    fn set_color(&mut self, lednum: usize, led : Led) {
+        self.set_color_rgba(lednum, led.r, led.g, led.b, led.a);
+    }
+/*
+    fn set_color_palette<U: Float, C: IntoColor<U>>(&mut self, lednum: usize, color: C) {
+        let rgb = color.into_rgb();
+        let (r, g, b, a): (u8, u8, u8, u8) = rgb.to_pixel();
+        self.l.set_color_rgba(lednum, r, g, b, a);
+    }
+
+    fn set_colors<L : Into<Led>, T : std::iter::Iterator<Item=L>>(&mut self, offset: usize, iter : T) {
+
+        for led in iter {
+            self.set_color(offset, led.into());
+            offset += 1;
+        }
+    }
+
+*/
     fn show(&mut self) -> std::io::Result<()>;
 }
 

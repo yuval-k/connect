@@ -1,5 +1,5 @@
 use std;
-use super::anim;
+use super::pixels;
 use kiss3d;
 use serde_json;
 use nalgebra;
@@ -35,7 +35,7 @@ impl GuiLedArray {
 }
 
 
-impl anim::LedArray for GuiLedArray {
+impl pixels::LedArray for GuiLedArray {
     fn len(&self) -> usize {
         self.pixels.len()
     }
@@ -83,7 +83,7 @@ fn start_ui(rx: std::sync::mpsc::Receiver<Vec<Pixel>>) {
     }
 }
 
-pub fn create_gui() -> Option<Box<anim::LedArray>> {
+pub fn create_gui() -> Option<Box<pixels::LedArray>> {
     let (rx, tx) = std::sync::mpsc::channel();
     std::thread::spawn(|| start_ui(tx));
     Some(Box::new(GuiLedArray::new(super::NUM_POLES * super::LEDS_PER_STRING, rx)))

@@ -150,3 +150,34 @@ sudo apt-get install libjack-jackd2-dev
 
 
 // TODO: change uart to frequency 500-1000 hz
+
+# To run locally with GUI:
+First generate a layout file:
+```
+python contrib/make_connect_layout.py > ./layout.json
+```
+Then run in GUI mode, with stdin input:
+
+```
+LAYOUT=./layout.json cargo run  --features gui -- --device stdin
+```
+
+You can then provide input in the terminal:
+
+To simulate someone touching a pole, type the pole's index (0-19):
+
+For example to 'touch' pole number 5, type:
+```
+5
+```
+To simulate connect, type the two indexes of the connected poles:
+```
+3 9
+```
+
+To simulate touch\connected stopped, add the u character before. This will untouch and unconnected
+the previous inputs, returning to default state:
+```
+u 5
+u 3 9
+```

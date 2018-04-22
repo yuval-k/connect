@@ -51,7 +51,14 @@ impl pixels::LedArray for GuiLedArray {
     }
 }
 
-fn start_ui(rx: std::sync::mpsc::Receiver<Vec<Pixel>>) {
+pub struct UI{
+    rx: std::sync::mpsc::Receiver<Vec<Pixel>>,
+    window : Window,
+    cubes: Vec<SceneNode>,
+}
+
+impl UI{
+    fn new(rx: std::sync::mpsc::Receiver<Vec<Pixel>>) -> Self {
 
     let file = std::fs::File::open(std::env::var("LAYOUT").unwrap()).unwrap();
     let pts: Vec<Point> = serde_json::from_reader(file).unwrap();
@@ -69,22 +76,30 @@ fn start_ui(rx: std::sync::mpsc::Receiver<Vec<Pixel>>) {
 
 
     window.set_light(Light::StickToCamera);
+    UI {
+        rx:rx,
+        window:window,
+         cubes:  cubes,
+    }
 
+    }
+pub fn start_ui(&mut self) {
 
-    while window.render() {
-        if let Ok(v) = rx.try_recv() {
-            for (pixel, cube) in v.iter().zip(cubes.iter_mut()) {
+    while self.window.render() {
+        if let Ok(v) = self.rx.try_recv() {
+            for (pixel, cube) in v.iter().zip(self.cubes.iter_mut()) {
                 cube.set_color(pixel.r as f32 / 255.0,
                                pixel.g as f32 / 255.0,
                                pixel.b as f32 / 255.0);
-
             }
         }
     }
 }
 
-pub fn create_gui() -> Option<Box<pixels::LedArray>> {
-    let (rx, tx) = std::sync::mpsc::channel();
-    std::thread::spawn(|| start_ui(tx));
-    Some(Box::new(GuiLedArray::new(super::NUM_POLES * super::LEDS_PER_STRING, rx)))
 }
+
+pub fn create_gui() -> (Option<Box<pixels::LedArray+Send>> , Option<UI>){
+    let (tx, rx) = std::sync::mpsc::channel();
+    (Some(Box::new(GuiLedArray::new(super::NUM_POLES * super::LEDS_PER_STRING, tx))), Some(UI::new(rx)))
+}
+

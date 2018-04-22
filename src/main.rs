@@ -41,13 +41,26 @@ extern crate serde_derive;
 
 #[cfg(feature = "gui")]
 mod gui;
-#[cfg(feature = "gui")]
-fn create_gui() -> Option<Box<pixels::LedArray>> {
-    gui::create_gui()
-}
+
 #[cfg(not(feature = "gui"))]
-fn create_gui() -> Option<Box<pixels::LedArray>> {
-    None
+mod gui {
+
+use std;
+
+pub struct UI;
+impl UI {
+
+pub fn start_ui(&mut self) {
+    unimplemented!();
+}
+
+}
+pub fn create_gui() -> (Option<Box<super::pixels::LedArray+ Send>> , Option<UI>){
+    (None, None)
+}
+
+
+
 }
 
 use animations::Drawer;
@@ -140,10 +153,10 @@ fn get_led_array() -> Box<pixels::LedArray> {
 }
 
 #[cfg(not(feature = "ledscape"))]
-fn get_led_array() -> Box<pixels::LedArray> {
-    match create_gui() {
-        Some(l) => l,
-        None => Box::new(get_opc_array("127.0.0.1:7890").expect("can't connect")),
+fn get_led_array() -> (Box<pixels::LedArray+ Send>,  Option<gui::UI>) {
+    match gui::create_gui() {
+        (Some(l), gui) => (l,gui),
+        (None, gui) => (Box::new(get_opc_array("127.0.0.1:7890").expect("can't connect")), gui),
     }
 }
 
@@ -207,14 +220,6 @@ fn main() {
     env_logger::init().unwrap();
 
     info!("hello");
-    let ledscapecontroller: Box<pixels::LedArray> = if opc_server.is_empty() {
-        get_led_array()
-    } else {
-        Box::new(get_opc_array(&opc_server).expect("can't connect"))
-    };
-
-    let mut ledscapecontroller = Box::new(pixels::RgbLedArray::new(ledscapecontroller, rgb));
-
     // TODO add OPCCLient
 
     const h_shift : f32 = (2.0+0.5)*360.0/(NUM_POLES as f32);
@@ -263,18 +268,45 @@ fn main() {
         panic!("event loop should be endless")
     });
 
-    let animator = animations::Animator::new(osc::OSCManager::new(&osc_server));
     let config = config::Config::new(std::path::Path::new(configfile), tx.clone());
 
-    work(config,
-         move |poles| draw_poles_to_array(ledscapecontroller.as_mut(), poles),
-         poles,
-         timeout,
-         animator,
-         rx);
+        let (ledscapecontroller, gui) : (Box<pixels::LedArray + Send>, Option<gui::UI> ) = if opc_server.is_empty() {
+            get_led_array()
+        } else {
+            (Box::new(get_opc_array(&opc_server).expect("can't connect")), None)
+        };
+
+    let ledscapecontroller : Box<pixels::LedArray + Send + 'static> = ledscapecontroller;
+
+    std::thread::spawn(move || {
+
+        let mut ledscapecontroller = pixels::RgbLedArray::new(ledscapecontroller, rgb);
+
+        let animator = animations::Animator::new(osc::OSCManager::new(&osc_server));
+
+        work(config,
+            move |poles| draw_poles_to_array(&mut ledscapecontroller, poles),
+            poles,
+            timeout,
+            animator,
+            rx);
+    });
+
+    if let Some(mut gui) = gui {
+        gui.start_ui();
+    } else {
+
+        loop {
+            std::thread::sleep_ms(1000000)
+        }
+    }
+
 
     println!("Hello, world!");
 }
+
+
+
 
 #[derive(Copy,Clone,Debug)]
 pub struct TouchState {

@@ -47,6 +47,7 @@ pub trait LedArray {
     fn show(&mut self) -> std::io::Result<()>;
 }
 
+
 pub struct PixelArray<T: LedArray> {
     l: T,
 }
@@ -105,11 +106,14 @@ impl RgbOrder {
     }
 }
 
-pub struct RgbLedArray<T: AsRef<LedArray> + AsMut<LedArray>> {
+pub struct RgbLedArray<T: AsRef<LedArray+ Send> + AsMut<LedArray+ Send>> {
     leds: T,
     rgb: RgbOrder,
 }
-impl<T: AsRef<LedArray> + AsMut<LedArray>> RgbLedArray<T> {
+
+unsafe impl<T:AsRef<LedArray+ Send> + AsMut<LedArray + Send > + Send> std::marker::Send for RgbLedArray<T>{}
+
+impl<T: AsRef<LedArray+ Send> + AsMut<LedArray + Send >> RgbLedArray<T> {
     pub fn new(leds: T, rgb: RgbOrder) -> Self {
         RgbLedArray {
             leds: leds,
@@ -117,7 +121,7 @@ impl<T: AsRef<LedArray> + AsMut<LedArray>> RgbLedArray<T> {
         }
     }
 }
-impl<T: AsRef<LedArray> + AsMut<LedArray>> LedArray for RgbLedArray<T> {
+impl<T: AsRef<LedArray+ Send> + AsMut<LedArray+ Send> + Send> LedArray for RgbLedArray<T> {
     fn len(&self) -> usize {
         self.leds.as_ref().len()
     }

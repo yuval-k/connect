@@ -25,7 +25,9 @@ Explanation of the LED lights on the BBB During the Installation: https://elinux
 // 
 
 Generate pru binaries:
+
 install node: apt-get install nodejs-legacy
+
 install cross gcc: gcc-arm-linux-gnueabihf OR gcc-arm-linux-gnueabi
 
 make CROSS_COMPILE=arm-linux-gnueabihf- 

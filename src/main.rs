@@ -91,7 +91,7 @@ pub enum Modes {
 
 /// touch goes up to cp1 and twinkels / breathes like the heart, the hight it is the higher the lum.
 
-const LEDS_PER_STRING: usize = 70;
+const LEDS_PER_STRING: usize = 150;
 const NUM_POLES: usize = 20;
 
 struct PoleLedArrayAdapter<'a> {

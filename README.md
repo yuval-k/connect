@@ -183,3 +183,28 @@ the previous inputs, returning to default state:
 u 5
 u 3 9
 ```
+
+
+sudo apt-get install libxcursor-dev libgl1-mesa-dev libfreetype6-dev  libxinerama-dev libxrandr-dev  libxi-dev 
+
+sudo apt-get install freeglut3-dev
+
+
+To setup beagle bone as OPC server:
+https://github.com/Yona-Appletree/LEDscape
+
+opc docs:
+http://openpixelcontrol.org/
+
+
+To use pixel control:
+```
+https://github.com/zestyping/openpixelcontrol
+cd openpixelcontrol
+make
+./bin/gl_server -l /path/to/connect/layout.json
+```
+
+```
+cargo run -- --device stdin --opc_server=localhost:7890
+```

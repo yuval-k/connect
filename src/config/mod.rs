@@ -15,7 +15,7 @@ struct ConfigData {
 impl ConfigData {
     fn new() -> Self {
         ConfigData {
-            num_leds_for_pole: 54,
+            num_leds_for_pole: 150,
             cp1: 21,
             cp2: 34,
             heart: 54..(54+14),

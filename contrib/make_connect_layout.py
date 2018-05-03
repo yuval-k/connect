@@ -9,9 +9,9 @@ parser = optparse.OptionParser(description="""
 parser.add_option('--radius', dest='radius', default=5,
                     action='store', type='float',
                     help='radius of cylinder. default = 5')
-parser.add_option('--leds', dest='leds', default=100,
+parser.add_option('--leds', dest='leds', default=150,
                     action='store', type='int',
-                    help='height of cylinder.  default = 100')
+                    help='height of cylinder.  default = 150')
 parser.add_option('--poles', dest='poles', default=20,
                     action='store', type='int',
                     help='number of poles.  default = 20')

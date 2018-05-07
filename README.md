@@ -59,10 +59,11 @@ sudo reboot
 
 # load module
 (see: http://elinux.org/EBC_Exercise_30_PRU_via_remoteproc_and_RPMsg)
-#enable uio in
-cd /opt/source/dtb-4.4-ti
-
 bash dtc-overlay.sh
+
+#enable uio in:
+
+cd /opt/source/dtb-4.4-ti
 
 then:
 edit:  src/arm/am335x-boneblack-wireless-emmc-overlay.dts

@@ -173,6 +173,8 @@ pub struct LedscapeLedArray {
     frame: LEDScapeFrame,
 }
 
+unsafe impl Send for LedscapeLedArray{}
+
 impl LedscapeLedArray {
     pub fn new(strip_size: usize) -> Self {
         let mut ls = unsafe { LEDScape::new(strip_size).expect("can't init ledscape") };

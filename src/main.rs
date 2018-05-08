@@ -128,7 +128,7 @@ impl<'a> pixels::LedArray for PoleLedArrayAdapter<'a> {
 
 
 #[cfg(feature = "ledscape")]
-fn get_led_array() -> Box<pixels::LedArray> {
+fn get_led_array() -> (Box<pixels::LedArray+ Send>,  Option<gui::UI>) {
     use pixels::LedArray;
     let mut l = ledscape::LedscapeLedArray::new(LEDS_PER_STRING);
     for i in 0..l.len() {
@@ -149,7 +149,7 @@ fn get_led_array() -> Box<pixels::LedArray> {
     for i in 0..l.len() {
         l.set_color_rgba(i, 0, 0, 0,0);
     }
-    Box::new(l)
+    (Box::new(l), None)
 }
 
 #[cfg(not(feature = "ledscape"))]

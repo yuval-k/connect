@@ -209,3 +209,11 @@ make
 ```
 cargo run -- --device stdin --opc_server=localhost:7890
 ```
+
+
+To build release mode with ledscape:
+
+```
+cargo build --release --features=ledscape
+sudo env LAYOUT=./layout.json target/release/connect --device stdin
+```

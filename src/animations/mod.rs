@@ -89,12 +89,12 @@ impl Animator {
             flower_phase: AnimPhase::new(std::time::Duration::from_secs(10)),
             
 
-            disco_phase: AnimPhase::new(std::time::Duration::from_millis(1550)),
+            disco_phase: AnimPhase::new(std::time::Duration::from_millis(15500)),
             disco_state: 0.0,
         }
     }
 
-    pub fn animate_anim1(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
+    pub fn animate_anim1(&mut self, poles: &mut [super::Pole], delta: std::time::Duration, mut draw_poles: &Fn(Vec<super::Pole>) -> std::any::Any) {
         self.disco_phase.update(delta);
 
         if self.disco_phase.is_done() {
@@ -103,7 +103,7 @@ impl Animator {
         } else {
             return;
         }
-        let pole_i = rand::thread_rng().gen_range(0, NUM_POLES);
+        let pole_i = 1;//rand::thread_rng().gen_range(0, NUM_POLES);
         let pole = poles[pole_i].leds();
 
         let step: usize = 5;
@@ -117,7 +117,7 @@ impl Animator {
             palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.0)];
 
 
-        for leadp in 0..155 {
+        for leadp in 6..145 {
 
             for pixel_i in 0..(step+1) {
                 if (leadp - pixel_i >= 0)&&(leadp - pixel_i < 150) {
@@ -127,7 +127,8 @@ impl Animator {
                 }
 
             }
-            std::thread::sleep_ms(10);
+            draw_poles(poles.to_vec());
+            std::thread::sleep_ms(100);
 
         }
 

@@ -419,7 +419,7 @@ fn work<F>(mut config: config::Config,
                         animator.animate_disco(&mut poles, delta);
                     }
                     Modes::Anim1 => {
-                        animator.animate_anim1(&mut poles, delta);
+                        animator.animate_anim1(&mut poles, delta, &draw_poles);
                     }
                 }
 

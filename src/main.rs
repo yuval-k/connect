@@ -388,7 +388,8 @@ fn work<F>(mut config: config::Config,
 
     let mut touches = TouchMap::new(timeout);
 
-    let mut mode = Modes::Regular;
+    //let mut mode = Modes::Regular;
+    let mut mode = Modes::Anim1;
     let mut last_anim_time = std::time::Instant::now();
     for event in receiver.into_iter() {
         match event {
@@ -419,7 +420,7 @@ fn work<F>(mut config: config::Config,
                         animator.animate_disco(&mut poles, delta);
                     }
                     Modes::Anim1 => {
-                        animator.animate_anim1(&mut poles, delta, &draw_poles);
+                        animator.animate_anim1(&mut poles, delta);
                     }
                 }
 

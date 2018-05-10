@@ -75,6 +75,10 @@ pub struct Animator {
     flower_phase: AnimPhase,
     disco_phase: AnimPhase,
     disco_state : f32,
+    anim1_phase: AnimPhase,
+    anim1_pole: usize,
+    anim1_color: f32,
+    anim1_direction: i32,
 }
 
 impl Animator {
@@ -89,49 +93,13 @@ impl Animator {
             flower_phase: AnimPhase::new(std::time::Duration::from_secs(10)),
             
 
-            disco_phase: AnimPhase::new(std::time::Duration::from_millis(15500)),
+            disco_phase: AnimPhase::new(std::time::Duration::from_millis(500)),
             disco_state: 0.0,
+            anim1_phase: AnimPhase::new(std::time::Duration::from_millis(2000)),
+            anim1_pole: 0,
+            anim1_color: 0.0,
+            anim1_direction: -1,
         }
-    }
-
-    pub fn animate_anim1(&mut self, poles: &mut [super::Pole], delta: std::time::Duration, mut draw_poles: &Fn(Vec<super::Pole>) -> std::any::Any) {
-        self.disco_phase.update(delta);
-
-        if self.disco_phase.is_done() {
-            self.disco_state += 1.0;
-            self.disco_phase.cycle();
-        } else {
-            return;
-        }
-        let pole_i = 1;//rand::thread_rng().gen_range(0, NUM_POLES);
-        let pole = poles[pole_i].leds();
-
-        let step: usize = 5;
-        let currentangle = rand::thread_rng().gen_range(0, 360) as f32/60. as f32;
-
-        //5 leds and clean trail
-        let hue = [palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 1.0),
-            palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.8),
-            palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5), palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.3),
-            palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.1),
-            palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.0)];
-
-
-        for leadp in 6..145 {
-
-            for pixel_i in 0..(step+1) {
-                if (leadp - pixel_i >= 0)&&(leadp - pixel_i < 150) {
-                    let p = pole.iter_mut().nth(leadp-pixel_i);
-                    p.map(|p| *p = hue[pixel_i]);
-                    //*p = hue[pixel_i];
-                }
-
-            }
-            draw_poles(poles.to_vec());
-            std::thread::sleep_ms(100);
-
-        }
-
     }
 
     pub fn animate_disco(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
@@ -151,7 +119,7 @@ impl Animator {
 
             Self::draw_petal_cp2(poles, i , hue);
         }
-        
+
         for i in 0..(NUM_POLES / 2) {
             // TODO: randomize this
             let currentangle = 2. * std::f32::consts::PI  *0.3245251*(self.disco_state+5.+i as f32);
@@ -159,6 +127,75 @@ impl Animator {
 
             Self::draw_petal_cp1(poles, i , hue);
         }
+    }
+
+    pub fn animate_anim1(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
+        let current = self.anim1_phase.update(delta);
+
+        let step: i32 = 10;
+
+        //5 leds and clean trail
+        let hue = [palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.1),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.3),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.6),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.8),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.8),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.6),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.3),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.1),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.0)];
+
+        let pole = poles[self.anim1_pole].leds();
+
+
+        if self.anim1_phase.is_done() {
+            for clean_pixel in 0..150 {
+                    let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
+                    p.map(|p| *p = hue[step as usize]);
+            }
+            self.anim1_pole = rand::thread_rng().gen_range(0, NUM_POLES);
+            self.anim1_color = rand::thread_rng().gen_range(0, 360) as f32/60. as f32;
+            self.anim1_direction = self.anim1_direction*-1;
+            self.anim1_phase.cycle();
+        }
+
+        //update lighting pixels 0 --> 159
+        if self.anim1_direction >0 {
+            let leadp =  (current*(149.0+step as f32)) as i32;
+            for pixel_i in 0..(step) {
+                if (leadp - pixel_i >= 0) && (leadp - pixel_i < 150) {
+                    let p = pole.iter_mut().nth((leadp - pixel_i + 1) as usize);
+                    p.map(|p| *p = hue[pixel_i as usize]);
+                    //*p = hue[pixel_i];
+                }
+            }
+            for clean_pixel in 0..150 {
+                if clean_pixel > leadp || clean_pixel < leadp - step{
+                    let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
+                    p.map(|p| *p = hue[step as usize]);
+                }
+            }
+        } else {
+            //update lighting pixels 149 --> -10
+            let leadp = ((1.0-current)*(149.0+step as f32)) as i32  -step as i32;
+
+            for pixel_i in 0..(step) {
+                if (leadp + pixel_i as i32  >= 0) && ((leadp + pixel_i as i32) < 150) {
+                    let p = pole.iter_mut().nth((leadp + pixel_i as i32 + 1) as usize);
+                    p.map(|p| *p = hue[(step- pixel_i) as usize]);
+                    //*p = hue[pixel_i];
+                }
+            }
+            for clean_pixel in 0..150 {
+                if clean_pixel < leadp || clean_pixel > leadp + step{
+                    let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
+                    p.map(|p| *p = hue[step as usize]);
+                }
+            }
+        }
+
     }
 
     pub fn animate_flower(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {

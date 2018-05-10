@@ -5,6 +5,9 @@ use bit_set;
 
 use std::ops::Rem;
 
+extern crate rand;
+use rand::Rng;
+
 pub mod idle;
 pub mod touch;
 
@@ -86,9 +89,48 @@ impl Animator {
             flower_phase: AnimPhase::new(std::time::Duration::from_secs(10)),
             
 
-            disco_phase: AnimPhase::new(std::time::Duration::from_millis(500)),
+            disco_phase: AnimPhase::new(std::time::Duration::from_millis(1550)),
             disco_state: 0.0,
         }
+    }
+
+    pub fn animate_anim1(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
+        self.disco_phase.update(delta);
+
+        if self.disco_phase.is_done() {
+            self.disco_state += 1.0;
+            self.disco_phase.cycle();
+        } else {
+            return;
+        }
+        let pole_i = rand::thread_rng().gen_range(0, NUM_POLES);
+        let pole = poles[pole_i].leds();
+
+        let step: usize = 5;
+        let currentangle = rand::thread_rng().gen_range(0, 360) as f32/60. as f32;
+
+        //5 leds and clean trail
+        let hue = [palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 1.0),
+            palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.8),
+            palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5), palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.3),
+            palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.1),
+            palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.0)];
+
+
+        for leadp in 0..155 {
+
+            for pixel_i in 0..(step+1) {
+                if (leadp - pixel_i >= 0)&&(leadp - pixel_i < 150) {
+                    let p = pole.iter_mut().nth(leadp-pixel_i);
+                    p.map(|p| *p = hue[pixel_i]);
+                    //*p = hue[pixel_i];
+                }
+
+            }
+            std::thread::sleep_ms(10);
+
+        }
+
     }
 
     pub fn animate_disco(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {

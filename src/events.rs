@@ -31,6 +31,7 @@ impl Eventer for StdinEventSource {
                 "disco" => Some(Modes::Disco),
                 "flower" => Some(Modes::Flower),
                 "reg" | "regular" => Some(Modes::Regular),
+                "anim1" => Some(Modes::Anim1),
                 _ => None,
             };
             if let Some(mode) = mode {

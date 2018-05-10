@@ -12,7 +12,7 @@ for pair in range(10):
     strip2 = []
     col = 3 + pair*4
 
-    for stripindex in range(54):
+    for stripindex in range(150):
         pixelrow = 5 + stripindex
         zcell  = sheet.cell(column=2,     row=pixelrow)
         xcellp = sheet.cell(column=col,   row=pixelrow)
@@ -26,10 +26,10 @@ for pair in range(10):
 
     # add heart LEDs:
     lastx,lasty,lastz = strip1[-1]
-    strip1 = strip1  + [(lastx,lasty,lastz-.1)]*14
+    strip1 = strip1  + [(lastx,lasty,lastz-.1)]
 
     lastx,lasty,lastz = strip2[-1]
-    strip2 = strip2  + [(lastx,lasty,lastz-.1)]*14
+    strip2 = strip2  + [(lastx,lasty,lastz-.1)]
 
     # opc server assumes 100 pixels per strips
     strip1 = strip1 + [(0,0,0)]*(100-len(strip1))

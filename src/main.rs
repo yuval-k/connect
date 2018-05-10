@@ -87,6 +87,7 @@ pub enum Modes {
     Regular,
     Disco,
     Flower,
+    Anim1,
 }
 
 /// touch goes up to cp1 and twinkels / breathes like the heart, the hight it is the higher the lum.
@@ -416,6 +417,9 @@ fn work<F>(mut config: config::Config,
                     }
                     Modes::Disco => {
                         animator.animate_disco(&mut poles, delta);
+                    }
+                    Modes::Anim1 => {
+                        animator.animate_anim1(&mut poles, delta);
                     }
                 }
 

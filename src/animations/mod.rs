@@ -76,7 +76,7 @@ pub struct Animator {
     disco_phase: AnimPhase,
     disco_state : f32,
     anim1_phase: AnimPhase,
-    anim1_pole: usize,
+    anim1_poles: [i32;5],
     anim1_color: f32,
     anim1_direction: i32,
     anim1_cleared_poles:[i32;NUM_POLES]
@@ -97,7 +97,7 @@ impl Animator {
             disco_phase: AnimPhase::new(std::time::Duration::from_millis(500)),
             disco_state: 0.0,
             anim1_phase: AnimPhase::new(std::time::Duration::from_millis(2000)),
-            anim1_pole: 0,
+            anim1_poles: [0,-1,-1,-1,-1],
             anim1_color: 0.0,
             anim1_direction: -1,
             anim1_cleared_poles:[0;NUM_POLES],
@@ -125,11 +125,23 @@ impl Animator {
 
         if self.anim1_phase.is_done() {
             //clear the pole
-            for pixel in poles[self.anim1_pole].leds() {
-                *pixel = hue[step as usize];
+            for &active_pole in self.anim1_poles.iter() {
+                if active_pole >= 0 {
+                    for pixel in poles[active_pole as usize].leds() {
+                        *pixel = hue[step as usize];
+                    }
+                    self.anim1_cleared_poles[active_pole as usize] = 1;
+                }
+            }
+            // choose new poles
+            let num_active_poles = rand::thread_rng().gen_range(1, self.anim1_poles.len()+1);
+            for i in 0..num_active_poles {
+                self.anim1_poles[i] =  rand::thread_rng().gen_range(0, NUM_POLES as i32);
+            }
+            for i in num_active_poles..self.anim1_poles.len() {
+                self.anim1_poles[i] = -1;
             }
             //if all poles been cleared, light it all up
-            self.anim1_cleared_poles[self.anim1_pole] = 1;
             match self.anim1_cleared_poles.iter().min() {
                 Some(&1) => {
                     for pole_i in poles.iter_mut() {
@@ -137,54 +149,57 @@ impl Animator {
                              *pixel = hue[3];
                         }
                     }
-                self.anim1_cleared_poles = [0;20];
+                    self.anim1_cleared_poles = [0;20];
                 },
                 Some(&_) => {},
                 None => {},
             }
-            self.anim1_pole = rand::thread_rng().gen_range(0, NUM_POLES);
+
             self.anim1_color = rand::thread_rng().gen_range(0, 360) as f32/60. as f32;
             self.anim1_direction = self.anim1_direction*-1;
             self.anim1_phase.cycle();
         }
 
-        let pole = poles[self.anim1_pole].leds();
+        for &active_pole in self.anim1_poles.iter() {
+            if active_pole >= 0 {
+                let pole = poles[active_pole as usize].leds();
 
-        //update lighting pixels 0 --> 159
-        if self.anim1_direction >0 {
-            let leadp =  (current*(149.0+step as f32)) as i32;
-            for pixel_i in 0..(step) {
-                if (leadp - pixel_i >= 0) && (leadp - pixel_i < 150) {
-                    let p = pole.iter_mut().nth((leadp - pixel_i + 1) as usize);
-                    p.map(|p| *p = hue[pixel_i as usize]);
-                    //*p = hue[pixel_i];
-                }
-            }
-            for clean_pixel in 0..150 {
-                if clean_pixel > leadp || clean_pixel < leadp - step{
-                    let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
-                    p.map(|p| *p = hue[step as usize]);
-                }
-            }
-        } else {
-            //update lighting pixels 149 --> -10
-            let leadp = ((1.0-current)*(149.0+step as f32)) as i32  -step as i32;
+                //update lighting pixels 0 --> 159
+                if self.anim1_direction >0 {
+                    let leadp =  (current*(149.0+step as f32)) as i32;
+                    for pixel_i in 0..(step) {
+                        if (leadp - pixel_i >= 0) && (leadp - pixel_i < 150) {
+                            let p = pole.iter_mut().nth((leadp - pixel_i + 1) as usize);
+                            p.map(|p| *p = hue[pixel_i as usize]);
+                            //*p = hue[pixel_i];
+                        }
+                    }
+                    for clean_pixel in 0..150 {
+                        if clean_pixel > leadp || clean_pixel < leadp - step{
+                            let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
+                            p.map(|p| *p = hue[step as usize]);
+                        }
+                    }
+                } else {
+                    //update lighting pixels 149 --> -10
+                    let leadp = ((1.0-current)*(149.0+step as f32)) as i32  -step as i32;
 
-            for pixel_i in 0..(step) {
-                if (leadp + pixel_i as i32  >= 0) && ((leadp + pixel_i as i32) < 150) {
-                    let p = pole.iter_mut().nth((leadp + pixel_i as i32 + 1) as usize);
-                    p.map(|p| *p = hue[(step- pixel_i) as usize]);
-                    //*p = hue[pixel_i];
-                }
-            }
-            for clean_pixel in 0..150 {
-                if clean_pixel < leadp || clean_pixel > leadp + step{
-                    let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
-                    p.map(|p| *p = hue[step as usize]);
+                    for pixel_i in 0..(step) {
+                        if (leadp + pixel_i as i32  >= 0) && ((leadp + pixel_i as i32) < 150) {
+                            let p = pole.iter_mut().nth((leadp + pixel_i as i32 + 1) as usize);
+                            p.map(|p| *p = hue[(step- pixel_i) as usize]);
+                        }
+                    }
+                    //clear trail
+                    for clean_pixel in 0..150 {
+                        if clean_pixel < leadp || clean_pixel > leadp + step{
+                            let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
+                            p.map(|p| *p = hue[step as usize]);
+                        }
+                    }
                 }
             }
         }
-
     }
 
     pub fn animate_disco(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {

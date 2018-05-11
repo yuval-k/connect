@@ -79,6 +79,7 @@ pub struct Animator {
     anim1_pole: usize,
     anim1_color: f32,
     anim1_direction: i32,
+    anim1_cleared_poles:[i32;NUM_POLES]
 }
 
 impl Animator {
@@ -99,33 +100,7 @@ impl Animator {
             anim1_pole: 0,
             anim1_color: 0.0,
             anim1_direction: -1,
-        }
-    }
-
-    pub fn animate_disco(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
-         self.disco_phase.update(delta);
-
-         if self.disco_phase.is_done() {
-             self.disco_state += 1.0;
-             self.disco_phase.cycle();
-         } else {
-             return;
-         }
-
-        for i in 0..(NUM_POLES / 2) {
-            // TODO: randomize this
-            let currentangle = 2. * std::f32::consts::PI  *0.3245251*(self.disco_state+i as f32);
-            let hue = palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5);
-
-            Self::draw_petal_cp2(poles, i , hue);
-        }
-
-        for i in 0..(NUM_POLES / 2) {
-            // TODO: randomize this
-            let currentangle = 2. * std::f32::consts::PI  *0.3245251*(self.disco_state+5.+i as f32);
-            let hue = palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5);
-
-            Self::draw_petal_cp1(poles, i , hue);
+            anim1_cleared_poles:[0;NUM_POLES],
         }
     }
 
@@ -147,19 +122,33 @@ impl Animator {
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.1),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.0)];
 
-        let pole = poles[self.anim1_pole].leds();
-
 
         if self.anim1_phase.is_done() {
-            for clean_pixel in 0..150 {
-                    let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
-                    p.map(|p| *p = hue[step as usize]);
+            //clear the pole
+            for pixel in poles[self.anim1_pole].leds() {
+                *pixel = hue[step as usize];
+            }
+            //if all poles been cleared, light it all up
+            self.anim1_cleared_poles[self.anim1_pole] = 1;
+            match self.anim1_cleared_poles.iter().min() {
+                Some(&1) => {
+                    for pole_i in poles.iter_mut() {
+                        for pixel in pole_i.leds() {
+                             *pixel = hue[3];
+                        }
+                    }
+                self.anim1_cleared_poles = [0;20];
+                },
+                Some(&_) => {},
+                None => {},
             }
             self.anim1_pole = rand::thread_rng().gen_range(0, NUM_POLES);
             self.anim1_color = rand::thread_rng().gen_range(0, 360) as f32/60. as f32;
             self.anim1_direction = self.anim1_direction*-1;
             self.anim1_phase.cycle();
         }
+
+        let pole = poles[self.anim1_pole].leds();
 
         //update lighting pixels 0 --> 159
         if self.anim1_direction >0 {
@@ -197,6 +186,35 @@ impl Animator {
         }
 
     }
+
+    pub fn animate_disco(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
+         self.disco_phase.update(delta);
+
+         if self.disco_phase.is_done() {
+             self.disco_state += 1.0;
+             self.disco_phase.cycle();
+         } else {
+             return;
+         }
+
+        for i in 0..(NUM_POLES / 2) {
+            // TODO: randomize this
+            let currentangle = 2. * std::f32::consts::PI  *0.3245251*(self.disco_state+i as f32);
+            let hue = palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5);
+
+            Self::draw_petal_cp2(poles, i , hue);
+        }
+
+        for i in 0..(NUM_POLES / 2) {
+            // TODO: randomize this
+            let currentangle = 2. * std::f32::consts::PI  *0.3245251*(self.disco_state+5.+i as f32);
+            let hue = palette::Hsl::new(palette::RgbHue::from_radians(currentangle), 1., 0.5);
+
+            Self::draw_petal_cp1(poles, i , hue);
+        }
+    }
+
+
 
     pub fn animate_flower(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
         let current = self.flower_phase.cyclic_update(delta);

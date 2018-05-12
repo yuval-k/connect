@@ -78,8 +78,10 @@ pub struct Animator {
     anim1_phase: AnimPhase,
     anim1_poles: [i32;5],
     anim1_color: f32,
+    anim1_b_color: palette::Hsl<f32>,
     anim1_direction: i32,
-    anim1_cleared_poles:[i32;NUM_POLES]
+    anim1_cleared_poles:[i32;NUM_POLES],
+    anim1_flashes: bool
 }
 
 impl Animator {
@@ -99,102 +101,139 @@ impl Animator {
             anim1_phase: AnimPhase::new(std::time::Duration::from_millis(2000)),
             anim1_poles: [0,-1,-1,-1,-1],
             anim1_color: 0.0,
+            anim1_b_color: palette::Hsl::new(palette::RgbHue::from_radians(0.0), 1., 0.5),
             anim1_direction: -1,
             anim1_cleared_poles:[0;NUM_POLES],
+            anim1_flashes: false,
         }
     }
 
     pub fn animate_anim1(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
         let current = self.anim1_phase.update(delta);
 
-        let step: i32 = 10;
+        let step: i32 = 20;
 
         //5 leds and clean trail
         let hue = [palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.1),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.2),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.3),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.4),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.45),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.55),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.6),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.7),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.8),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.8),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.7),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.6),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.55),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.45),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.4),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.3),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.2),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.1),
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.0)];
 
 
+
         if self.anim1_phase.is_done() {
+            //new phase time
+            let new_phase = rand::thread_rng().gen_range(1000, 4000);
+            self.anim1_phase =  AnimPhase::new(std::time::Duration::from_millis(new_phase));
+
             //clear the pole
-            for &active_pole in self.anim1_poles.iter() {
-                if active_pole >= 0 {
-                    for pixel in poles[active_pole as usize].leds() {
-                        *pixel = hue[step as usize];
+            if self.anim1_flashes {
+                for &active_pole in self.anim1_poles.iter() {
+                    if active_pole >= 0 {
+                        for pixel in poles[active_pole as usize].leds() {
+                            *pixel = hue[step as usize];
+                        }
+                        self.anim1_cleared_poles[active_pole as usize] = 1;
                     }
-                    self.anim1_cleared_poles[active_pole as usize] = 1;
                 }
+                // choose new poles
+                let num_active_poles = rand::thread_rng().gen_range(1, self.anim1_poles.len() + 1);
+                // first clear
+                for i in 0..self.anim1_poles.len() {
+                    self.anim1_poles[i] = -1;
+                }
+                // random poles, no repetition
+                for i in 0..num_active_poles {
+                    let random_pole = rand::thread_rng().gen_range(0, NUM_POLES as i32);
+                    if !self.anim1_poles.contains(&random_pole) {
+                        self.anim1_poles[i] = random_pole;
+                    }
+                }
+
             }
-            // choose new poles
-            let num_active_poles = rand::thread_rng().gen_range(1, self.anim1_poles.len()+1);
-            for i in 0..num_active_poles {
-                self.anim1_poles[i] =  rand::thread_rng().gen_range(0, NUM_POLES as i32);
-            }
-            for i in num_active_poles..self.anim1_poles.len() {
-                self.anim1_poles[i] = -1;
-            }
+            self.anim1_flashes = true;
             //if all poles been cleared, light it all up
             match self.anim1_cleared_poles.iter().min() {
                 Some(&1) => {
+                    self.anim1_b_color = palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5);
                     for pole_i in poles.iter_mut() {
                         for pixel in pole_i.leds() {
-                             *pixel = hue[3];
+                            *pixel = self.anim1_b_color;
                         }
                     }
-                    self.anim1_cleared_poles = [0;20];
+                    self.anim1_cleared_poles = [0; 20];
+                    self.anim1_flashes = false;
                 },
                 Some(&_) => {},
                 None => {},
             }
-
-            self.anim1_color = rand::thread_rng().gen_range(0, 360) as f32/60. as f32;
-            self.anim1_direction = self.anim1_direction*-1;
+            self.anim1_color = rand::thread_rng().gen_range(0, 360) as f32 / 60. as f32;
+            self.anim1_direction = self.anim1_direction * -1;
             self.anim1_phase.cycle();
         }
 
-        for &active_pole in self.anim1_poles.iter() {
-            if active_pole >= 0 {
-                let pole = poles[active_pole as usize].leds();
+        //flashes
+        if self.anim1_flashes {
+            for &active_pole in self.anim1_poles.iter() {
+                if active_pole >= 0 {
+                    let pole = poles[active_pole as usize].leds();
 
-                //update lighting pixels 0 --> 159
-                if self.anim1_direction >0 {
-                    let leadp =  (current*(149.0+step as f32)) as i32;
-                    for pixel_i in 0..(step) {
-                        if (leadp - pixel_i >= 0) && (leadp - pixel_i < 150) {
-                            let p = pole.iter_mut().nth((leadp - pixel_i + 1) as usize);
-                            p.map(|p| *p = hue[pixel_i as usize]);
-                            //*p = hue[pixel_i];
+                    //update lighting pixels 0 --> 159
+                    if self.anim1_direction > 0 {
+                        let leadp = (current * (149.0 + step as f32)) as i32;
+                        for pixel_i in 0..(step) {
+                            if (leadp - pixel_i >= 0) && (leadp - pixel_i < 150) {
+                                let p = pole.iter_mut().nth((leadp - pixel_i + 1) as usize);
+                                p.map(|p| *p = hue[pixel_i as usize]);
+                            }
                         }
-                    }
-                    for clean_pixel in 0..150 {
-                        if clean_pixel > leadp || clean_pixel < leadp - step{
-                            let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
-                            p.map(|p| *p = hue[step as usize]);
+                        for clean_pixel in 0..150 {
+                            if clean_pixel < leadp - step {
+                                let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
+                                p.map(|p| *p = hue[step as usize]);
+                            }
+                            if (clean_pixel > leadp) && (self.anim1_cleared_poles[active_pole as usize] < 1) {
+                                let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
+                                p.map(|p| *p = self.anim1_b_color);
+                            }
                         }
-                    }
-                } else {
-                    //update lighting pixels 149 --> -10
-                    let leadp = ((1.0-current)*(149.0+step as f32)) as i32  -step as i32;
+                    } else {
+                        //update lighting pixels 149 --> -10
+                        let leadp = ((1.0 - current) * (149.0 + step as f32)) as i32 - step as i32;
 
-                    for pixel_i in 0..(step) {
-                        if (leadp + pixel_i as i32  >= 0) && ((leadp + pixel_i as i32) < 150) {
-                            let p = pole.iter_mut().nth((leadp + pixel_i as i32 + 1) as usize);
-                            p.map(|p| *p = hue[(step- pixel_i) as usize]);
+                        for pixel_i in 0..(step) {
+                            if (leadp + pixel_i as i32 >= 0) && ((leadp + pixel_i as i32) < 150) {
+                                let p = pole.iter_mut().nth((leadp + pixel_i as i32 + 1) as usize);
+                                p.map(|p| *p = hue[(step - pixel_i) as usize]);
+                            }
                         }
-                    }
-                    //clear trail
-                    for clean_pixel in 0..150 {
-                        if clean_pixel < leadp || clean_pixel > leadp + step{
-                            let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
-                            p.map(|p| *p = hue[step as usize]);
+                        //clear trail
+                        for clean_pixel in 0..150 {
+                            if clean_pixel >  leadp + step {
+                                let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
+                                p.map(|p| *p = hue[step as usize]);
+                            }
+                            if clean_pixel < leadp && self.anim1_cleared_poles[active_pole as usize] < 1 {
+                                let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
+                                p.map(|p| *p = self.anim1_b_color);
+                            }
                         }
                     }
                 }

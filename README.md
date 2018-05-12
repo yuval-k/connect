@@ -217,3 +217,28 @@ To build release mode with ledscape:
 cargo build --release --features=ledscape
 sudo env LAYOUT=./layout.json target/release/connect --device stdin
 ```
+
+# changes in new IOT image
+
+- upgrade kernel
+
+update uEnv.txt:
+uncomment:
+```
+disable_uboot_overlay_video=1
+disable_uboot_overlay_audio=1
+uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo
+```
+
+
+# service
+see guide here: https://learn.adafruit.com/running-programs-automatically-on-your-tiny-computer/overview
+
+
+update path in contrib/connect.service (chanage /home/debian/connect/target/release/connect and /home/debian/connect/layout.json to the real path)
+
+```
+cp contrib/connect.service /lib/systemd/system/connect.service
+sudo systemctl enable connect.service
+sudo systemctl start connect.service
+```

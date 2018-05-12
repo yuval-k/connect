@@ -1,0 +1,15 @@
+[Unit]
+Description=Connect Service
+After=network.target
+
+[Service]
+ExecStart=/home/debian/connect/target/release/connect
+Environment=LAYOUT=/home/debian/connect/layout.json
+Restart=always
+RestartSec=10
+StartLimitInterval=0
+
+
+[Install]
+WantedBy=multi-user.target
+Alias=connect.service

@@ -167,6 +167,9 @@ impl Config {
             ("/mode/flower", _) => {
                 sender.send(Events::ModeChanged(Modes::Flower));
             }
+            ("/mode/anim1", _) => {
+                sender.send(Events::ModeChanged(Modes::Anim1));
+            }
             ("/saveconfig", _) => {
                 sender.send(Events::SaveConfig);
             }

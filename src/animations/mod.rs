@@ -185,7 +185,7 @@ impl Animator {
             //if all poles been cleared, light it all up
             match self.anim1_cleared_poles.iter().min() {
                 Some(&1) => {
-                    self.anim1_b_color = palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5);
+                    self.anim1_b_color = palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.0);
                     for pole_i in poles.iter_mut() {
                         for pixel in pole_i.leds() {
                             *pixel = self.anim1_b_color;

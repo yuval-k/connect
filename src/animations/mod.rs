@@ -81,7 +81,8 @@ pub struct Animator {
     anim1_b_color: palette::Hsl<f32>,
     anim1_direction: i32,
     anim1_cleared_poles:[i32;NUM_POLES],
-    anim1_flashes: bool
+    anim1_flashes: bool,
+    anim1_step: i32,
 }
 
 impl Animator {
@@ -105,40 +106,52 @@ impl Animator {
             anim1_direction: -1,
             anim1_cleared_poles:[0;NUM_POLES],
             anim1_flashes: false,
+            anim1_step: 30,
         }
     }
 
     pub fn animate_anim1(&mut self, poles: &mut [super::Pole], delta: std::time::Duration) {
         let current = self.anim1_phase.update(delta);
 
-        let step: i32 = 20;
 
-        //5 leds and clean trail
-        let hue = [palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.1),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.2),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.3),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.4),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.45),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.55),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.6),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.7),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.8),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.8),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.7),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.6),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.55),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.45),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.4),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.3),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.2),
+        let hue = [
             palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.1),
-            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.0)];
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.2),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.3),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.35),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.40),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.45),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.55),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.6),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.65),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.7),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.75),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.8),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.9),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.9),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.8),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.75),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.7),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.65),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.6),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.55),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.5),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.45),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.4),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.35),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.3),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.2),
+            palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.1)];
 
 
 
         if self.anim1_phase.is_done() {
+
+            //random step
+            self.anim1_step = rand::thread_rng().gen_range(10, 30);
             //new phase time
             let new_phase = rand::thread_rng().gen_range(1000, 4000);
             self.anim1_phase =  AnimPhase::new(std::time::Duration::from_millis(new_phase));
@@ -148,7 +161,7 @@ impl Animator {
                 for &active_pole in self.anim1_poles.iter() {
                     if active_pole >= 0 {
                         for pixel in poles[active_pole as usize].leds() {
-                            *pixel = hue[step as usize];
+                            *pixel = palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.0);
                         }
                         self.anim1_cleared_poles[active_pole as usize] = 1;
                     }
@@ -197,17 +210,17 @@ impl Animator {
 
                     //update lighting pixels 0 --> 159
                     if self.anim1_direction > 0 {
-                        let leadp = (current * (149.0 + step as f32)) as i32;
-                        for pixel_i in 0..(step) {
+                        let leadp = (current * (149.0 + self.anim1_step as f32)) as i32;
+                        for pixel_i in 0..(self.anim1_step) {
                             if (leadp - pixel_i >= 0) && (leadp - pixel_i < 150) {
                                 let p = pole.iter_mut().nth((leadp - pixel_i + 1) as usize);
-                                p.map(|p| *p = hue[pixel_i as usize]);
+                                p.map(|p| *p = hue[(pixel_i as f32 *(hue.len() as f32/self.anim1_step as f32)) as usize]);
                             }
                         }
                         for clean_pixel in 0..150 {
-                            if clean_pixel < leadp - step {
+                            if clean_pixel < leadp - self.anim1_step {
                                 let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
-                                p.map(|p| *p = hue[step as usize]);
+                                p.map(|p| *p = palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.0));
                             }
                             if (clean_pixel > leadp) && (self.anim1_cleared_poles[active_pole as usize] < 1) {
                                 let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
@@ -216,19 +229,19 @@ impl Animator {
                         }
                     } else {
                         //update lighting pixels 149 --> -10
-                        let leadp = ((1.0 - current) * (149.0 + step as f32)) as i32 - step as i32;
+                        let leadp = ((1.0 - current) * (149.0 + self.anim1_step as f32)) as i32 - self.anim1_step as i32;
 
-                        for pixel_i in 0..(step) {
+                        for pixel_i in 0..(self.anim1_step) {
                             if (leadp + pixel_i as i32 >= 0) && ((leadp + pixel_i as i32) < 150) {
                                 let p = pole.iter_mut().nth((leadp + pixel_i as i32 + 1) as usize);
-                                p.map(|p| *p = hue[(step - pixel_i) as usize]);
+                                p.map(|p| *p = hue[(((self.anim1_step - pixel_i-1) as f32) *(hue.len() as f32/self.anim1_step as f32)) as usize]);
                             }
                         }
                         //clear trail
                         for clean_pixel in 0..150 {
-                            if clean_pixel >  leadp + step {
+                            if clean_pixel >  leadp + self.anim1_step {
                                 let p = pole.iter_mut().nth((clean_pixel + 1) as usize);
-                                p.map(|p| *p = hue[step as usize]);
+                                p.map(|p| *p = palette::Hsl::new(palette::RgbHue::from_radians(self.anim1_color), 1., 0.0));
                             }
                             if clean_pixel < leadp && self.anim1_cleared_poles[active_pole as usize] < 1 {
                                 let p = pole.iter_mut().nth((clean_pixel + 1) as usize);

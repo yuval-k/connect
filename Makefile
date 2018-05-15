@@ -7,6 +7,11 @@ cross-build:
 	RUSTFLAGS="-C linker=$(TARGET)gcc" AR=$(TARGET)ar CC=$(TARGET)gcc cargo build --features ledscape --target arm-unknown-linux-gnueabihf
 	RUSTFLAGS="-C linker=$(TARGET)gcc" AR=$(TARGET)ar CC=$(TARGET)gcc cargo build --release --features ledscape --target arm-unknown-linux-gnueabihf
 
+.PHONY: all_pru_templates
+all_pru_templates:
+	git submodule update --init
+	$(MAKE) -C lib/LEDscape all_pru_templates
+	cp lib/LEDscape/pru/bin/*.bin ./lib/bin/
 
 .PHONY: build
 build:
